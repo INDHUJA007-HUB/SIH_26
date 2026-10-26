@@ -1,0 +1,431 @@
+{
+  "status": "proposed seed register; not deployable regulatory code",
+  "as_of": "2026-10-26",
+  "rules": [
+    {
+      "rule_id": "DOC.EOA.AFFIDAVIT_2",
+      "source_id": "U02",
+      "source_sha256": "153d54816f2cf11489218e239113544e8d49b73680009688baa7dc4880636051",
+      "pdf_page": 97,
+      "printed_page": 81,
+      "clause": "Annexure 2.1(i)",
+      "content_summary": {
+        "e_stamp_inr": 100,
+        "digital_signature": "Chairman/Secretary",
+        "sworn_before": [
+          "First Class Judicial Magistrate",
+          "Notary",
+          "Oath Commissioner"
+        ]
+      },
+      "content_status": "V-U",
+      "interpretation_state": "REQUIRES_AUTHORIZED_REVIEW",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    },
+    {
+      "rule_id": "DOC.STRUCTURAL.TRIGGER",
+      "source_id": "U02",
+      "source_sha256": "153d54816f2cf11489218e239113544e8d49b73680009688baa7dc4880636051",
+      "pdf_page": 73,
+      "printed_page": 57,
+      "clause": "6.17(h)",
+      "content_summary": {
+        "age_basis": "Completion Certificate issue date",
+        "age_years": 30,
+        "issuer": "registered Structural Engineer",
+        "validity_years": 5
+      },
+      "content_status": "V-U",
+      "interpretation_state": "REQUIRES_AUTHORIZED_REVIEW",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    },
+    {
+      "rule_id": "DOC.GOVERNMENT.ALTERNATIVE",
+      "source_id": "U02",
+      "source_sha256": "153d54816f2cf11489218e239113544e8d49b73680009688baa7dc4880636051",
+      "pdf_page": 97,
+      "printed_page": 81,
+      "clause": "Annexure 2.1 preamble",
+      "content_summary": {
+        "age_years": 50,
+        "condition": "Specified government-built older building; original documents unavailable; competent-authority letter",
+        "blanket_safety_exemption": false
+      },
+      "content_status": "V-U",
+      "interpretation_state": "REQUIRES_AUTHORIZED_REVIEW",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    },
+    {
+      "rule_id": "DOC.FIRE.VALIDITY",
+      "source_id": "U02",
+      "source_sha256": "153d54816f2cf11489218e239113544e8d49b73680009688baa7dc4880636051",
+      "pdf_page": 73,
+      "printed_page": 57,
+      "clause": "6.17(i)",
+      "content_summary": {
+        "requirement": "valid Fire Safety Certificate from competent authority",
+        "universal_lifetime_years": null
+      },
+      "content_status": "V-U",
+      "interpretation_state": "REQUIRES_AUTHORIZED_REVIEW",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    },
+    {
+      "rule_id": "AUTHORITIES.ANNEXURE_14",
+      "source_id": "U02",
+      "source_sha256": "153d54816f2cf11489218e239113544e8d49b73680009688baa7dc4880636051",
+      "pdf_page": 179,
+      "printed_page": 163,
+      "clause": "Annexure 14",
+      "content_summary": {
+        "columns": [
+          "land use",
+          "site plan",
+          "building plan",
+          "occupation certificate"
+        ],
+        "is_fire_authority_directory": false
+      },
+      "content_status": "V-U",
+      "interpretation_state": "REQUIRES_AUTHORIZED_REVIEW",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    },
+    {
+      "rule_id": "INFRA.COMPUTERS.DEPARTMENT",
+      "source_id": "U02",
+      "source_sha256": "153d54816f2cf11489218e239113544e8d49b73680009688baa7dc4880636051",
+      "pdf_page": 108,
+      "printed_page": 92,
+      "clause": "Annexure 4.1 note 10",
+      "content_summary": {
+        "minimum_computers": 20,
+        "scope": "separate computer laboratory per department"
+      },
+      "content_status": "V-U",
+      "interpretation_state": "REQUIRES_AUTHORIZED_REVIEW",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    },
+    {
+      "rule_id": "INFRA.PRINTERS",
+      "source_id": "U02",
+      "source_sha256": "153d54816f2cf11489218e239113544e8d49b73680009688baa7dc4880636051",
+      "pdf_page": 108,
+      "printed_page": 92,
+      "clause": "Annexure 4.1 note 3",
+      "content_summary": {
+        "minimum_fraction_of_pcs_laptops": 0.05,
+        "rounding": "requires approved operational policy"
+      },
+      "content_status": "V-U",
+      "interpretation_state": "REQUIRES_AUTHORIZED_REVIEW",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    },
+    {
+      "rule_id": "INFRA.PLOTTER",
+      "source_id": "U02",
+      "source_sha256": "153d54816f2cf11489218e239113544e8d49b73680009688baa7dc4880636051",
+      "pdf_page": 108,
+      "printed_page": 92,
+      "clause": "Annexure 4.1 note 4",
+      "content_summary": {
+        "scope": "Planning",
+        "minimum": 1,
+        "type": "A1 size colour printer/plotter"
+      },
+      "content_status": "V-U",
+      "interpretation_state": "REQUIRES_AUTHORIZED_REVIEW",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    },
+    {
+      "rule_id": "INFRA.BANDWIDTH",
+      "source_id": "U02",
+      "source_sha256": "153d54816f2cf11489218e239113544e8d49b73680009688baa7dc4880636051",
+      "pdf_page": 108,
+      "printed_page": 92,
+      "clause": "Annexure 4.1 note 5",
+      "content_summary": {
+        "tiers_mbps": [
+          {
+            "max": 300,
+            "minimum": 100
+          },
+          {
+            "min": 301,
+            "max": 600,
+            "minimum": 300
+          },
+          {
+            "min": 601,
+            "max": 900,
+            "minimum": 500
+          },
+          {
+            "min": 901,
+            "minimum": 1000
+          }
+        ],
+        "transcription_note": "Source prints 1Gbpa for highest tier; preserve normalized interpretation"
+      },
+      "content_status": "V-U",
+      "interpretation_state": "REQUIRES_AUTHORIZED_REVIEW",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    },
+    {
+      "rule_id": "FACULTY.UG.RATIOS",
+      "source_id": "U02",
+      "source_sha256": "153d54816f2cf11489218e239113544e8d49b73680009688baa7dc4880636051",
+      "pdf_page": 111,
+      "printed_page": 95,
+      "clause": "Annexure 5.2",
+      "content_summary": {
+        "engineering": 20,
+        "planning": 16,
+        "arts_crafts": 15,
+        "design": 15,
+        "hmct": 20,
+        "computer_applications": 25,
+        "management": 25,
+        "S": "sum of approved student intake for all years"
+      },
+      "content_status": "V-U",
+      "interpretation_state": "REQUIRES_AUTHORIZED_REVIEW",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    },
+    {
+      "rule_id": "FACULTY.PG.RATIOS",
+      "source_id": "U02",
+      "source_sha256": "153d54816f2cf11489218e239113544e8d49b73680009688baa7dc4880636051",
+      "pdf_page": 112,
+      "printed_page": 96,
+      "clause": "Annexure 5.3",
+      "content_summary": {
+        "engineering": 15,
+        "planning": 10,
+        "arts_crafts": 15,
+        "design": 15,
+        "hmct": 12,
+        "MCA": 20,
+        "MBA_PGDM": 20
+      },
+      "content_status": "V-U",
+      "interpretation_state": "REQUIRES_AUTHORIZED_REVIEW",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    },
+    {
+      "rule_id": "FACULTY.CADRE.AMBIGUITY",
+      "source_id": "U02",
+      "source_sha256": "153d54816f2cf11489218e239113544e8d49b73680009688baa7dc4880636051",
+      "pdf_page": 111,
+      "printed_page": 95,
+      "clause": "Annexure 5.1-5.2",
+      "content_summary": {
+        "issue": "Printed component expressions and total do not reconcile with separately listed Principal/HOD. Uploaded UG Professor expression does not show minus one.",
+        "action": "NOT_EVALUABLE; approved interpretation required"
+      },
+      "content_status": "V-U",
+      "interpretation_state": "INTERPRETATION_PENDING",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    },
+    {
+      "rule_id": "FACULTY.LOW_ADMISSION",
+      "source_id": "U02",
+      "source_sha256": "153d54816f2cf11489218e239113544e8d49b73680009688baa7dc4880636051",
+      "pdf_page": 112,
+      "printed_page": 96,
+      "clause": "Annexure 5.3 following table",
+      "content_summary": {
+        "average_admission_max_fraction": 0.5,
+        "reference_years": 3,
+        "faculty_reduction_fraction": 0.25,
+        "scope_and_rounding": "pending approved interpretation"
+      },
+      "content_status": "V-U",
+      "interpretation_state": "REQUIRES_AUTHORIZED_REVIEW",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    },
+    {
+      "rule_id": "DISCLOSURE.WEBSITE",
+      "source_id": "U02",
+      "source_sha256": "153d54816f2cf11489218e239113544e8d49b73680009688baa7dc4880636051",
+      "pdf_page": 196,
+      "printed_page": 180,
+      "clause": "Annexure 18",
+      "content_summary": {
+        "requirement": "public mandatory disclosure",
+        "issuer_authentication_evidence": false
+      },
+      "content_status": "V-U",
+      "interpretation_state": "REQUIRES_AUTHORIZED_REVIEW",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    },
+    {
+      "rule_id": "VIDEO.WEBSITE.SHORT",
+      "source_id": "U02",
+      "source_sha256": "153d54816f2cf11489218e239113544e8d49b73680009688baa7dc4880636051",
+      "pdf_page": 200,
+      "printed_page": 184,
+      "clause": "Annexure 18.15(xviii)",
+      "content_summary": {
+        "minimum_minutes": 1,
+        "maximum_minutes": 2,
+        "scope": "website infrastructure/facilities disclosure"
+      },
+      "content_status": "V-U",
+      "interpretation_state": "REQUIRES_AUTHORIZED_REVIEW",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    },
+    {
+      "rule_id": "VIDEO.EVC.CONTEXTUAL",
+      "source_id": "U02",
+      "source_sha256": "153d54816f2cf11489218e239113544e8d49b73680009688baa7dc4880636051",
+      "pdf_page": 24,
+      "printed_page": 8,
+      "clause": "1.9(f)-(g)",
+      "content_summary": {
+        "minimum_minutes": 30,
+        "scope": "specified EVC contexts; not every upload"
+      },
+      "content_status": "V-U",
+      "interpretation_state": "REQUIRES_AUTHORIZED_REVIEW",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    },
+    {
+      "rule_id": "WORKFLOW.RESCRUTINY",
+      "source_id": "U02",
+      "source_sha256": "153d54816f2cf11489218e239113544e8d49b73680009688baa7dc4880636051",
+      "pdf_page": 23,
+      "printed_page": 7,
+      "clause": "1.8(f)-(g)",
+      "content_summary": {
+        "scope": "deficiencies pointed out by Scrutiny Committee",
+        "unrestricted_postsubmission_edit": false
+      },
+      "content_status": "V-U",
+      "interpretation_state": "REQUIRES_AUTHORIZED_REVIEW",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    },
+    {
+      "rule_id": "FACULTY.POP.2025",
+      "source_id": "S05",
+      "source_sha256": "64bbb2638b131018a07e49b6ce3f99f7059b70cffadd04260651c05a5de9eda3",
+      "pdf_page": 259,
+      "printed_page": 22,
+      "clause": "Revised Annexure 5",
+      "content_summary": {
+        "programme": "Engineering and Technology",
+        "maximum_percentage": 20,
+        "women_reservation_wording_percentage": 5,
+        "reservation_denominator_rounding": "pending approved interpretation"
+      },
+      "content_status": "V-M",
+      "interpretation_state": "REQUIRES_AUTHORIZED_REVIEW",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    },
+    {
+      "rule_id": "FACULTY.BASE_CLAUSE_DELETED",
+      "source_id": "S05",
+      "source_sha256": "64bbb2638b131018a07e49b6ce3f99f7059b70cffadd04260651c05a5de9eda3",
+      "pdf_page": 257,
+      "printed_page": 20,
+      "clause": "6.14(d)(iii)",
+      "content_summary": {
+        "operation": "delete specified subclause",
+        "all_programme_adjunct_abolition_established": false
+      },
+      "content_status": "V-M",
+      "interpretation_state": "REQUIRES_AUTHORIZED_REVIEW",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    },
+    {
+      "rule_id": "SEATS.INTERNATIONAL.2026",
+      "source_id": "S06",
+      "source_sha256": "8a73ec306d0e19c23404c215772cfe1f4c43abaeed2f2f0636075e516a234459",
+      "pdf_page": 7,
+      "printed_page": 6,
+      "clause": "2.9 modified; continues PDF8",
+      "content_summary": {
+        "engineering_diploma_ug_percent": 15,
+        "engineering_pg_percent": 25,
+        "other_listed_programmes_percent": 25,
+        "other_conditions": "must be evaluated separately"
+      },
+      "content_status": "V-M",
+      "interpretation_state": "REQUIRES_AUTHORIZED_REVIEW",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    },
+    {
+      "rule_id": "CATEGORY.BBA_BMS_BCA.2026",
+      "source_id": "S06",
+      "source_sha256": "8a73ec306d0e19c23404c215772cfe1f4c43abaeed2f2f0636075e516a234459",
+      "pdf_page": 3,
+      "printed_page": 2,
+      "clause": "1.3.3(b)",
+      "content_summary": {
+        "textual_change": "Non-Technical -> Technical",
+        "full_approval_scope": "unresolved; require circulars and regulatory interpretation"
+      },
+      "content_status": "V-M",
+      "interpretation_state": "INTERPRETATION_PENDING",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    },
+    {
+      "rule_id": "ELP.50_PERCENT.CONFLICT",
+      "source_id": "S06",
+      "source_sha256": "8a73ec306d0e19c23404c215772cfe1f4c43abaeed2f2f0636075e516a234459",
+      "pdf_page": 15,
+      "printed_page": 14,
+      "clause": "Item41 versus concept note PDF20",
+      "content_summary": {
+        "issue": "table says minimum 50%; concept note says up to 50%",
+        "action": "do not choose silently"
+      },
+      "content_status": "V-M",
+      "interpretation_state": "INTERPRETATION_PENDING",
+      "publication_state": "DRAFT",
+      "production_enabled": false,
+      "adverse_action_allowed": false
+    }
+  ]
+}

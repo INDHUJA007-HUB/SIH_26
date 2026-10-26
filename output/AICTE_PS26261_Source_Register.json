@@ -1,0 +1,250 @@
+{
+  "research_cutoff": "2026-10-26",
+  "timezone": "Asia/Calcutta",
+  "purpose": "Source provenance and verification limits for proposed AICTE PS26261 specification v3.0",
+  "sources": [
+    {
+      "id": "U01",
+      "title": "Uploaded competitive research",
+      "local_path": "C:\\Users\\haris\\OneDrive\\Documents\\ChatGPT\\SIH\\sources\\competitive-research.pdf",
+      "sha256": "670c87340b58cbaa327a83c123173373045c770a4c1337f7cfeb2b209414e700",
+      "bytes": 630858,
+      "status": "uploaded prior analysis",
+      "publisher_reference_or_download_url": null,
+      "checked_on": "2026-10-26",
+      "timezone": "Asia/Calcutta",
+      "pdf_pages": 36
+    },
+    {
+      "id": "U02",
+      "title": "Uploaded AICTE APH 2024-25 to 2026-27",
+      "local_path": "C:\\Users\\haris\\OneDrive\\Documents\\ChatGPT\\SIH\\sources\\aicte-aph-2024-27-uploaded.pdf",
+      "sha256": "153d54816f2cf11489218e239113544e8d49b73680009688baa7dc4880636051",
+      "bytes": 4155819,
+      "status": "V-U: content verified in supplied file",
+      "publisher_reference_or_download_url": "https://www.aicte.gov.in/sites/default/files/APH%20Final.pdf",
+      "checked_on": "2026-10-26",
+      "timezone": "Asia/Calcutta",
+      "pdf_pages": 231
+    },
+    {
+      "id": "U03",
+      "title": "Uploaded seven additions",
+      "local_path": "C:\\Users\\haris\\OneDrive\\Documents\\ChatGPT\\SIH\\sources\\seven-additions.jpeg",
+      "sha256": "b07ee4b07a4650c6319be1be856a6b496f2bd9b4dfac63e78f298469543f5e74",
+      "bytes": 147128,
+      "status": "user supplied scope",
+      "publisher_reference_or_download_url": null,
+      "checked_on": "2026-10-26",
+      "timezone": "Asia/Calcutta"
+    },
+    {
+      "id": "S05",
+      "title": "Combined handbook and 2025-26 addendum",
+      "local_path": "C:\\Users\\haris\\OneDrive\\Documents\\ChatGPT\\SIH\\sources\\addendum-2025-26-mirrored.pdf",
+      "sha256": "64bbb2638b131018a07e49b6ce3f99f7059b70cffadd04260651c05a5de9eda3",
+      "bytes": 6257526,
+      "status": "V-M: mirror; issuer download and complete currency unconfirmed",
+      "publisher_reference_or_download_url": "https://edu-ecosys.com/AICTE-APH-26-27.pdf",
+      "checked_on": "2026-10-26",
+      "timezone": "Asia/Calcutta",
+      "pdf_pages": 261,
+      "identity_note": "URL filename says 26-27; actual 2025-26 amendment appears at physical PDF pages 234-260; PoP text 257-260."
+    },
+    {
+      "id": "S06",
+      "title": "2026-27 addendum",
+      "local_path": "C:\\Users\\haris\\OneDrive\\Documents\\ChatGPT\\SIH\\sources\\addendum-2026-27-mirrored.pdf",
+      "sha256": "8a73ec306d0e19c23404c215772cfe1f4c43abaeed2f2f0636075e516a234459",
+      "bytes": 1141397,
+      "status": "V-M: mirror; issuer download and complete currency unconfirmed",
+      "publisher_reference_or_download_url": "https://avantiscdnprodstorage.blob.core.windows.net/legalupdatedocs/52940/AICTE-issued-the-Corrigendum-regarding-the-Approval-Process-2026-27-February202026.pdf",
+      "checked_on": "2026-10-26",
+      "timezone": "Asia/Calcutta",
+      "pdf_pages": 21
+    }
+  ],
+  "web_sources": [
+    {
+      "id": "S01",
+      "url": "https://www.aicte.gov.in/",
+      "review_status": "maintenance page; official approval routes unavailable",
+      "checked_on": "2026-10-26"
+    },
+    {
+      "id": "S02",
+      "url": "https://www.sih.gov.in/sih2026PS",
+      "review_status": "timeout/access error; official brief/deadline not certified",
+      "checked_on": "2026-10-26"
+    },
+    {
+      "id": "S03",
+      "url": "https://zaidsayyed.in/tools/sih-problem-statements/sih26261",
+      "review_status": "accessible secondary mirror; working brief decomposition",
+      "checked_on": "2026-10-26"
+    },
+    {
+      "id": "S04",
+      "url": "https://www.linkedin.com/posts/aicteindia_addendumcorrigendum-2025-26-for-the-approval-activity-7267763906738032641-d-Nr",
+      "review_status": "AICTE announcement; existence of 2025-26 addendum",
+      "checked_on": "2026-10-26"
+    },
+    {
+      "id": "S07",
+      "url": "https://www.ccet.ac.in/pdf/auditreports/AICTE/Deficiency%20Report%202025-26.PDF",
+      "review_status": "AICTE-generated report on institution host; portal baseline",
+      "checked_on": "2026-10-26"
+    },
+    {
+      "id": "S08d",
+      "url": "https://github.com/sohamramshette/SIH11",
+      "review_status": "repository layout and README only; no runtime execution",
+      "checked_on": "2026-10-26"
+    },
+    {
+      "id": "S08e",
+      "url": "https://github.com/nonutsayan/CipherCore-verify",
+      "review_status": "README and repository layout; hosted demo unavailable; claims unvalidated",
+      "checked_on": "2026-10-26"
+    },
+    {
+      "id": "S10",
+      "url": "https://www.digilocker.gov.in/web/data-exchange",
+      "review_status": "official integration context; project access not established",
+      "checked_on": "2026-10-26"
+    },
+    {
+      "id": "S11",
+      "url": "https://entity.digilocker.gov.in/",
+      "review_status": "official organization-document platform; specific coverage not established",
+      "checked_on": "2026-10-26"
+    },
+    {
+      "id": "S11-resources",
+      "url": "https://entity.digilocker.gov.in/web/resources",
+      "review_status": "requester resources indexed; API entitlement not established",
+      "checked_on": "2026-10-26"
+    },
+    {
+      "id": "S12-root",
+      "url": "https://cca.gov.in/root_certificate.html",
+      "review_status": "official root certificate publication",
+      "checked_on": "2026-10-26"
+    },
+    {
+      "id": "S12-guidance",
+      "url": "https://cca.gov.in/sites/files/pdf/guidelines/CCA-ESAIG.pdf",
+      "review_status": "official verification guidance; no product signature checks run",
+      "checked_on": "2026-10-26"
+    },
+    {
+      "id": "S13",
+      "url": "https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/overview?view=doc-intel-4.0.0",
+      "review_status": "primary product documentation; no benchmark comparison",
+      "checked_on": "2026-10-26"
+    },
+    {
+      "id": "S14",
+      "url": "https://docs.aws.amazon.com/textract/latest/dg/what-is.html",
+      "review_status": "primary product documentation; no benchmark comparison",
+      "checked_on": "2026-10-26"
+    },
+    {
+      "id": "S15-rules",
+      "url": "https://www.meity.gov.in/static/uploads/2025/11/53450e6e5dc0bfa85ebd78686cadad39.pdf",
+      "review_status": "official Gazette; phased commencement checked at English PDF page24",
+      "checked_on": "2026-10-26"
+    },
+    {
+      "id": "S15-index",
+      "url": "https://www.meity.gov.in/documents/act-and-policies/digital-personal-data-protection-rules-2025-gDOxUjMtQWa?pageTitle=Digital-Personal-Data-Protection-Rules-2025",
+      "review_status": "official index lists rules, corrigendum and enforcement timeline; full legal applicability not certified",
+      "checked_on": "2026-10-26"
+    },
+    {
+      "id": "S16",
+      "url": "https://www.cert-in.org.in/PDF/CERT-In_Directions_70B_28.04.2022.pdf",
+      "review_status": "primary directions; deployment applicability requires mapping",
+      "checked_on": "2026-10-26"
+    },
+    {
+      "id": "S16-FAQ",
+      "url": "https://www.cert-in.org.in/PDF/FAQs_on_CyberSecurityDirections_May2022.pdf",
+      "review_status": "primary FAQ for incident criteria",
+      "checked_on": "2026-10-26"
+    }
+  ],
+  "competitors": [
+    {
+      "repository": "Anexus5919/pramana",
+      "commit": "782d4d8127ea848798370238b622e18f19258ed2",
+      "review": "selected source and README inspection; not executed",
+      "saved_files": [
+        {
+          "saved_path": "C:\\Users\\haris\\OneDrive\\Documents\\ChatGPT\\SIH\\research\\competitor-0-backend_pramana_api_admin.py",
+          "sha256": "ca20ff72344a73ee9c841cfe8b9b7982e52cf2098251dd272d3f9bd094328b15"
+        },
+        {
+          "saved_path": "C:\\Users\\haris\\OneDrive\\Documents\\ChatGPT\\SIH\\research\\competitor-0-backend_pramana_insights_readiness.py",
+          "sha256": "d40cb8ddff2c35d09fc02db538b8cb39093062eb5b0b38a0c2593370ff7fd565"
+        },
+        {
+          "saved_path": "C:\\Users\\haris\\OneDrive\\Documents\\ChatGPT\\SIH\\research\\competitor-0-backend_rulesets_aicte-aph-2024-27.yaml",
+          "sha256": "1a250f8765ba9dc993af70784a767ae5f5a84e615f5f97ce28e2548192489202"
+        },
+        {
+          "saved_path": "C:\\Users\\haris\\OneDrive\\Documents\\ChatGPT\\SIH\\research\\competitor-0-backend_tests_test_rectification_scope.py",
+          "sha256": "46899ad60e6a25cb62807c32c57cee5aca174ec2707389976575f61fd2bf627c"
+        },
+        {
+          "saved_path": "C:\\Users\\haris\\OneDrive\\Documents\\ChatGPT\\SIH\\research\\competitor-0-frontend_src_pages_rules_Impact.tsx",
+          "sha256": "bff33c7f1eb4dabb8aa44df4b706514e983d2bf9ed2180228e158d7c076c2c67"
+        },
+        {
+          "saved_path": "C:\\Users\\haris\\OneDrive\\Documents\\ChatGPT\\SIH\\research\\competitor-0-README.md",
+          "sha256": "1867d9ccf348971ecee2c5b83d7217000f1b8f51ff31c311dd3b4f4981e689fe"
+        }
+      ]
+    },
+    {
+      "repository": "viraj-1709/aicte",
+      "commit": "0c1ab2d9faf75ba2261a5802a3e75834d5cfcc8b",
+      "review": "selected source and README inspection; not executed",
+      "saved_files": [
+        {
+          "saved_path": "C:\\Users\\haris\\OneDrive\\Documents\\ChatGPT\\SIH\\research\\competitor-1-backend_app_data_rules_config.json",
+          "sha256": "8e5be2f6be3b126440c141ea0f43acd2bf4c8d316288d1c7c92f29db61a040f7"
+        },
+        {
+          "saved_path": "C:\\Users\\haris\\OneDrive\\Documents\\ChatGPT\\SIH\\research\\competitor-1-backend_app_pipeline_step5_verify.py",
+          "sha256": "b3679804bf694f4be09d96fd0347e7216e562ee298d65d4ae0a17698c10dc5b2"
+        },
+        {
+          "saved_path": "C:\\Users\\haris\\OneDrive\\Documents\\ChatGPT\\SIH\\research\\competitor-1-README.md",
+          "sha256": "e4c2e0d2658a3dbd3c279f7c0651e39befd3fe5309e24131953b129b057fe68a"
+        }
+      ]
+    },
+    {
+      "repository": "sathvik210508/AI-Powered-Application-Validation-Document-Authentication-Regulatory-Compliance-Platform",
+      "commit": "28173fd5d0086842b2d8aad90b447f4e313cb38e",
+      "review": "selected source and README inspection; not executed",
+      "saved_files": [
+        {
+          "saved_path": "C:\\Users\\haris\\OneDrive\\Documents\\ChatGPT\\SIH\\research\\competitor-2-backend_services_verifier.py",
+          "sha256": "ee83b3eb5f0de95486ca967a1d98556c6abf40e36da81c5e80cb488b55642f2b"
+        },
+        {
+          "saved_path": "C:\\Users\\haris\\OneDrive\\Documents\\ChatGPT\\SIH\\research\\competitor-2-README.md",
+          "sha256": "d2cb58511daebb8920f1e45c086afbe88e9d3834c6831ef6e38729a2782918b9"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "AICTE approval-cycle pages and official SIH route unavailable during research.",
+    "Complete current circular set not certified.",
+    "Mirrored copies not authenticated as identical to current publisher bytes.",
+    "No team product implementation or benchmark was audited."
+  ]
+}

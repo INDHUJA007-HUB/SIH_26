@@ -1,0 +1,13 @@
+# Local and generated working files
+tmp/
+__pycache__/
+*.py[cod]
+.DS_Store
+Thumbs.db
+
+# Local environments and secrets
+.env
+.env.*
+!.env.example
+.venv/
+venv/
