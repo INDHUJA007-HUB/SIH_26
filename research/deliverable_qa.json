@@ -1,0 +1,30 @@
+{
+  "pages": 28,
+  "links": 40,
+  "all_seven_additions": true,
+  "source_hashes_verified": true,
+  "draft_rules_disabled": true,
+  "text_within_safe_bounds": true,
+  "artifacts": [
+    {
+      "name": "AICTE_PS26261_Revised_Solution_Context.md",
+      "bytes": 94407,
+      "sha256": "3f0d8a641162c4cdb36fed247d1ca2cb63768089b8a57e86a0b61c2b89cfa6fe"
+    },
+    {
+      "name": "AICTE_PS26261_Revised_Solution_Context.pdf",
+      "bytes": 192669,
+      "sha256": "95e8cfb30e7d3ef6bbf1f26af67435843ff5987312fd7a3c06e2c7707798037f"
+    },
+    {
+      "name": "AICTE_PS26261_Rule_Evidence_Register.json",
+      "bytes": 15065,
+      "sha256": "713d3e0f5ca5e9257f3c3e6db5de0816c96d4d576e876c0f38606273b4e73a91"
+    },
+    {
+      "name": "AICTE_PS26261_Source_Register.json",
+      "bytes": 11292,
+      "sha256": "e19f14ea74d25780b4c20f5b1875960c7dac028835369dfa6d9b3bc93693aa98"
+    }
+  ]
+}

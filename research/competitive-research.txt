@@ -1,0 +1,1640 @@
+
+
+=== PDF PAGE 1 ===
+AICTE PS 26261 — Corrected Speciﬁcation v2.1, Competitive Research & UniquenessPlaybook
+Project: AICTE Pre-Scrutiny, Document Authentication & Regulatory Compliance Platform (SIH 2026, PS 26261)Applies to: your spec v2.0.0 →  this document deﬁnes v2.1.0
+Prepared: 25 October 2026 (idea-submission deadline reported as 28 October 2026 on an unoﬃcial mirror — conﬁrm on sih.gov.in)Companion to: the earlier verdict. This ﬁle is the full evidence base, the correction list, the new differentiators, and the plan.
+0. How to read this document
+0.1 Evidence tags (use the same tags in your own deck and README)
+Tag Meaning
+[V] Veriﬁed from a source I opened (primary or a faithful copy of the primary).
+[R] Reported by a secondary source (news, college page, summary). Treat as probably right; conﬁrm in the APH PDF before putting it in the deck.
+[?] Not veriﬁed. Appears in your v2.0.0 spec or in my memory; must be checked against the APH 2024-27 PDF and the 2025-26 / 2026-27 addenda before you cite
+it.
+[A] Assumption or design choice — ours, not AICTE's. Must be labelled as such.
+0.2 What I did and did not do
+Did: read the oﬃcial PS 26261 brief (via a mirror of sih.gov.in), ﬁve public repositories/demos built for the same PS, secondary copies of AICTE faculty norms,
+AICTE-issued EoA letters (they carry useful clause references), news on the 2025-26 and 2026-27 addenda, and the DigiLocker requester API documentation.
+Did not: open the APH 2024-27 PDF itself or either addendum PDF; read competitor source code beyond README level; survey commercial KYC/document-
+veriﬁcation vendors in depth; test any competitor's software. Every competitor statement below is "per README / public demo".
+Consequence: the regulatory numbers in Section 3 are split into [V]/[R] (safe to use) and [?] (verify ﬁrst). Do not let a judge ﬁnd the ﬁrst wrong page number —your spec's selling point is veriﬁable citations.
+0.3 Contents
+1. Executive summary
+2. Research: brief decomposition, context, existing solutions, drawbacks, capability matrix
+3. Corrections to spec v2.0.0 (C-01 … C-32)
+4. New unique additions (U-01 … U-12) + parity items (P-01 … P-08)
+5. Speciﬁcation v2.1 deltas: architecture, rule-pack layout, schema, API, UI
+6. Corrected evaluation protocol (how to show measured results honestly)
+7. Showing uniqueness: positioning, demo script, deck plan, jury Q&A, claims register
+8. Build plan, priorities, cut list, risks
+9. Appendices: sources, APH veriﬁcation checklist, license table, glossary
+1. Executive summary
+1.1 Verdict in six lines
+1. Concept: not unique. PS 26261 itself deﬁnes the six statuses, the safeguards and the evaluation metrics; at least ﬁve public implementations already exist for
+this PS.
+2. Closest competitor:Pramana (472 commits, 162 tests, real CCA-root signature checks, C2PA, revision "time machine", ﬁne-tuned local extractor,
+encryption/retention). Do not try to out-forensic it in the time you have.
+3. Your real edge: governance of the regulation itself (versioned rules, addenda, impact analysis), honest evaluation, and remediation (what would make thispass), not just detection.
+4. Biggest new ﬁnding: the APH 2024-27 is a three-year handbook that is changed by annual addenda — e.g. the 2025-26 addendum reportedly removed"adjunct faculty" and set Professor-of-Practice to 20% (5% reserved for women) [R], and the 2026-27 addendum reportedly raised supernumerary seats to 25%
+and requires "nil deﬁciency based on self-disclosure" [R]. Any engine with a single frozen rule ﬁle is wrong by design. Yours can be right by design.
+
+=== PDF PAGE 2 ===
+5. Your spec has accuracy and security problems (cadre formula, adjunct caps now outdated, page-number conﬂicts, /365.25 date bug, role chosen by theclient at login, raw PAN, AGPL dependencies, no encryption/retention). All are ﬁxable and are listed in Section 3.
+6. Benchmark numbers in v2.0.0 are targets, not results. Present them as targets until measured, with conﬁdence intervals and a false-accusation rate.
+1.2 The ﬁve repositioning moves
+# Move Why it works
+1"Regulation-as-code with layered addenda" — base handbook + dated overlays,effective-cycle resolution, per-value provenance The handbook really changes mid-cycle; nobody else documents this.
+2Impact simulator + maker-checker publish gate Answers "what happens to 50 pending applications if AICTE amends a norm?"
+before it goes live.
+3Counterfactual remediation engine + Intake Planner Turns every deﬁciency into a quantiﬁed ﬁx (hire N, reduce intake by M, upgrade
+to X Mbps). Detection-only tools stop at the ﬂag.
+4Disclosure Auditor (public-website three-way check) Uses a legal, public, AICTE-mandated disclosure source; no restricted DB
+needed.
+5Honest evaluation: False-Accusation Rate, abstention, CIs, template shift, red-
+team matrix
+Adverse regulatory action harms institutions; a platform that measures its own
+harm is credible.
+1.3 Scoreboard (self-assessment, 1–5)
+Dimension v2.0.0 v2.1 target Note
+Fit to PS brief 4 5 Add ﬂoor-plan evidence, application-history records, split 8 metrics
+Regulatory accuracy 3 4 Fix cadre math, adjunct/PoP, verify page refs
+Technical novelty 2 3 Novelty is in system design, not in detectors
+Distinctiveness vs public repos 2 4 Moves 1–5 above
+Security/privacy posture 2 4 Server-side roles, encryption, retention, sandbox
+Evaluation credibility 2 4 Measured, CI'd, FAR, red-team
+Build feasibility (team of ~4–6) 2 3 Cut list in Section 8
+1.4 If you only have 3 days (until idea submission)
+1. Rewrite the pitch around Moves 1–5 (Section 7.3 gives the slide plan).
+2. Remove or relabel every unveriﬁed number (Section 9.2 checklist).
+3. Fix the six embarrassing items: cadre formula, adjunct/PoP, /365.25, role-at-login, raw PAN, benchmark-as-target.
+4. Add the two cheapest high-impact features to the idea: layered rule packs and remediation engine.
+5. Add an honest Veriﬁcation Feasibility Matrix (U-06) so you never claim access you don't have.
+2. Research
+2.1 The oﬃcial brief, decomposed into testable requirements
+Source: oﬃcial PS 26261 text [V] (S1). Left column = what the brief asks; right = status of v2.0.0 and the v2.1 action.
+ID Requirement in the brief v2.0.0 v2.1 action
+R01Identify application category; apply the right checklist Covered Keep; add classiﬁer conﬁdence
+R02
+Use institutional records already in authorized AICTE systems:aﬃdavits/undertakings, accreditation, NOCs, previous EoA and approval status,
+approved programmes/intake, faculty, compliance/deﬁciency status, TER
+payment status, application history
+Partial Add eoa_history, application_history,
+accreditation_records tables (C-27)
+R03OCR, document classiﬁcation, extraction Covered
+(keyword
+Add text+layout classiﬁer with conﬁdence (P-05)
+
+=== PDF PAGE 3 ===
+ID Requirement in the brief v2.0.0 v2.1 action
+classiﬁer is
+weak)
+R04Identify missing, incomplete, expired, inconsistent info Covered Separate completeness from the six veriﬁcation
+statuses (C-09)
+R05Structured validation report; allow rectiﬁcation where process permits Covered Keep; add rectiﬁcation-scope check (ﬂag edits
+outside requested scope)
+R06Flags with evidence and reason; "preliminary indicators, not proof" Covered Keep; enforce corroboration rule (C-22)
+R07
+Verify via issuing authorities (APIs, portals, signed records, QR, reference
+numbers); record source, timestamp, result; six statuses; route to manual whenunavailable/inconclusive
+Covered
+(simulated)
+Add veriﬁcation tiers and feasibility matrix (U-06);
+store source, queried_at, result, method
+explicitly
+R08Conﬁgurable checklists derived from APH, regulations, "authorized instructions" Covered Layered rule packs for addenda/instructions (U-01)
+R09Review infrastructure evidence: photographs, videos, ﬂoor plans, certiﬁcates; CV
+where feasible
+Partial — ﬂoor
+plans not
+handled
+Add ﬂoor-plan area reconciliation (U-09)
+R10Dashboard: application-wise status, deﬁciencies, veriﬁcation results, unresolved
+discrepancies, cases needing intervention Covered Keep; keep light (overlaps PS 26262)
+R11Alerts: missing info, expired docs, pending source veriﬁcation, anomalies Covered Keep
+R12Audit trail of rules applied, records checked, source responses, alerts,
+observations, actions Mostly Add rules_applied[] and records_checked[]
+to each evaluation record (C-26)
+R13Role-based access, secure document handling, conﬁdentiality, human review
+before any adverse action Partial
+Server-side roles; encryption; state machine that
+physically blocks LoD issuance without oﬃcer
+conﬁrmation (C-13, C-15, C-29)
+R14Demo on authorized, anonymized or synthetic data Covered Keep; never commit real certiﬁcates
+R15Evaluation: extraction accuracy, validation accuracy, anomaly detection, source-veriﬁcation rate, discrepancy reliability, average veriﬁcation time, alert timeliness,
+reduction in manual effort
+Covered, butspec says "7
+metrics"
+The brief lists eight items; split metric 7 into 7a/7b
+(C-28)
+R16All checks and workﬂows conﬁgurable Partial Rounding policy, thresholds, relaxation rules →
+conﬁg
+R17Do not bypass access controls or assume access to restricted databases Covered Never label simulated sources "live" (D-08)
+R18Data protection: security, conﬁdentiality, access logging, data-retention
+safeguards
+Partial (no
+retention, no
+encryption)
+C-15, C-16
+R19Explainable, evidence-supported ﬂags Covered Keep
+R20AI = decision support; ﬁnal decisions with authorities Covered Keep banner + enforced state machine
+R21"Integrated with, or designed for integration with" the AICTE portal Production-path
+table only
+Publish OpenAPI + adapter contract + SSO
+placeholder (Section 5)
+R22Reduce repeated manual checking using records already available Covered Keep; add claim-coverage view (U-05)
+2.2 Context that shapes the right design
+AICTE already runs e-governance for approvals since January 2010 [V] (S18). The portal produces deﬁciency reports based on self-disclosure[V] (S19). The
+gap is authenticity and cross-checking, not data entry.
+The handbook is multi-year but not static. APH 2024-27 is a three-year handbook [V] (S17); AICTE's 2025-26 page links an "Addendum/Corrigendum 2025-26
+of APH 2024-27" [V] (S25); a 2026-27 addendum also exists [R] (S14). Rules therefore need effective-cycle layering.
+2025-26 addendum (reported): "Adjunct Faculty" (part-time, up to 15% of required faculty) done away with; "Professor of Practice" up to 20% of requiredfaculty (cadre) — 5% exclusively reserved for women PoPs on regular basis [R] (S13). The original APH 2024-27 text allowed adjunct or PoP up to 15% with
+special wording for Design and Planning [V] (S15, partial text).
+2026-27 addendum (reported): supernumerary seats up to 25% for management/design and other technical programmes; institutions required to show "nil
+deﬁciency based on self disclosure" and submit student details [R] (S14).
+
+=== PDF PAGE 4 ===
+Mandatory website disclosure (Annexure-18): AICTE's own 2026-27 EoA letter says institutions must disclose, at a prominent place on their website, (i)department-wise infrastructure with approved courses/intake, (ii) faculty details with qualiﬁcation, tenure, experience, Student:Faculty Ratio and Cadre Ratio,
+(iii) audited ﬁnancial statements for the last 3 years [V] (S12). The same letter cites Annexure-18 at page 180[V] — this conﬂicts with page numbers in yourv2.0.0 (see C-06).
+Ghost faculty is a recognised problem. The Education Ministry has approved voluntary Aadhaar-based authentication for AICTE-regulated institutions,explicitly to curb ghost faculty [V] (S20). Voluntary ⇒  you cannot assume it; your PAN/HMAC fallback is justiﬁed.
+Real consent-based issuer access exists — DigiLocker Requester APIs (list issued documents, fetch ﬁle/XML with integrity HMAC) [V] (S21). This is the
+legitimate route to "verify at the issuer" without scraping.
+Demand signal: other institutions are starting to build AI document veriﬁcation after ﬁnding manipulated documents (e.g., Delhi University announced plans
+in July 2026) [V] (S22).
+Idea-stage competition on this PS is thin (25 ideas as of 23 Oct per a mirror) [R] (S1/S2), but several complete public implementations exist, so ﬁnale-stagecompetition is not thin.
+An earlier AICTE approval-portal PS on sih.gov.in asked for evaluator matching, real-time tracking and "digital dimension tracking of infrastructure" [V] (S24).The same themes (workﬂow, dimension checking) keep recurring, which supports adding ﬂoor-plan/dimension evidence (U-09).
+2.3 Existing solutions — teardown
+All statements are "per README/public page" unless marked. Drawbacks are things you can legitimately raise in a "why yours?" answer — phrase them asgaps, never as insults.
+2.3.1 Pramana (Anexus5919/pramana) — strongest public competitor (S3)
+What it claims (README): 472 commits; 162 passing tests; 29 cited rules built from the APH 2024-27 and its 2025-26 and 2026-27 addenda; PDF digital
+signatures checked against CCA India root certiﬁcates (oﬄine); issuer-signed QR codes with a public scan-to-verify page; C2PA Content Credentials on photos;text-changed-in-later-revision detection with a "time machine"; font and seal-reuse checks; cross-application linking (shared faculty IDs, certiﬁcate numbers, ﬁle
+hashes, photos, seals) drawn as a network; year-over-year comparison; deﬁciency-letter drafting; signed evidence pack; "Ask why" (answers only from its ownﬁndings); re-veriﬁcation watch; inspection brief PDF; pre-submission readiness check; Hindi (Devanagari) OCR; ﬁne-tuned Qwen3-1.7B extractor (94.7% ﬁelds fullycorrect on held-out layouts); parser sandbox; per-document envelope encryption; retention policy; PostgreSQL support; MIT licence; avoids AGPL libraries.
+Measured results it reports: 54/54 planted problems on 11 test applications (83 documents); 300 randomised generated applications →  99.2% recall / 91.6%precision before ﬁxes, 100%/100% on two fresh seeds after ﬁxes; 18/18 everyday-editor edit methods; 9/9 real DSC-signed Government e-Gazettes veriﬁed.
+Gaps you can legitimately raise:
+# Gap (per README) Our answer
+1Issuer registries are simulated (clearly labelled) — real feasibility of each registry not mapped Veriﬁcation-tier + feasibility matrix, DigiLocker consent-pull path
+(U-06)
+2Rule governance beyond "versioned, cited ruleset" and replayable runs is not described: no
+what-if, impact analysis on pending applications, or maker-checker publish
+Layered addenda + impact simulator + maker-checker (U-01, U-
+02)
+3Reports deﬁciencies and drafts letters citing clauses, but no quantiﬁed remediation options or
+applicant planning tool is described Remediation engine + Intake Planner (U-03, U-04)
+4No check of the institution's public mandatory disclosures is described Disclosure Auditor (U-07)
+5Evaluation is on its own generated applications (self-graded); real-document test is e-
+Gazettes, not AICTE-style certiﬁcates
+Template-shift split, CIs, FAR, red-team matrix (Section 6) — and
+be honest that you share the synthetic-data limitation
+6[inference] Very large feature surface (graph, time machine, Ask-why, evidence packs) plus
+local-LLM and ﬁne-tuned-model setup raises oﬃcer training and operational burden
+Governed minimal workﬂow; deterministic mode by default; LLM
+optional (U-12/P-05)
+7[inference] First-run needs network downloads for model weights/assets One-command oﬄine-capable demo
+What to copy (parity items): CCA-root DSC veriﬁcation (P-01), PDF revision diff (P-02), encryption + retention + sandbox (P-03/P-04), Hindi OCR (P-05).
+2.3.2 CrashCoders (viraj-1709/aicte) (S4)
+What it claims: 6-step pipeline; ELA tamper heatmap; SHA-256 duplicate detection across institutions; metadata forensics (Photoshop/Canva/GIMP signatures);
+chronological sanity; reused identiﬁers; EXIF GPS Haversine; blueprint room/classroom detection; transparent 0–100 risk score; oﬃcer conﬁrm/false-alarmfeedback that recalibrates scores; hash-chained ledger; PDF dossier; Hindi/English toggle; "Tamper Demo Mode" (clean vs tampered twin); applicant pre-check.
+Evaluation: 30 synthetic applications; 98.2% extraction, 93.5% time saved (1.2 min vs 18.5 min baseline). Registries simulated via a mock service.
+Gaps:
+
+=== PDF PAGE 5 ===
+# Gap Our answer
+1
+Forensic signals are individually weak: metadata software markers are trivially evaded (print-to-PDF,
+screenshots) and ELA alone is unreliable on re-compressed scans; exact SHA-256 missescropped/re-encoded duplicates
+Calibrated severity + corroboration rule (no single weak
+signal →  Mismatch) + pHash/ORB for near-duplicates (C-22/C-23)
+2Hand-weighted risk score; oﬃcer feedback "immediately recalibrates" — ungoverned feedback can
+drift or be gamed
+Feedback goes to a calibration queue under maker-
+checker, never silently changes rules (U-11)
+3Time-saved metric rests on an assumed manual baseline Time-and-motion protocol with oﬃcer volunteers; label as
+estimate until measured (Section 6.6)
+4Rules appear tied to one handbook snapshot Layered rule packs (U-01)
+5Single commit, evaluation on own 30 apps Same limitation applies to you — differentiate on
+methodology, not on bigger numbers
+What to copy: the Tamper Demo Mode idea (clean vs tampered twin side-by-side) is excellent for a 3-minute judge demo; a Hindi/English toggle is cheap.
+2.3.3 AICTE SmartValidate (sathvik210508) (S5)
+What it claims: FastAPI + SQLAlchemy/SQLite + React 19; 7 pre-seeded scenarios (A–G) incl. missing document, expired certiﬁcate, faculty-count mismatch (48declared vs 42 in roster), SHA-256 duplicate across slots, authority mismatch (360 vs 240 intake), low-OCR + source-unavailable (HTTP 503) →  manual review;
+deterministic rule engine with conﬁgurable rules; PBKDF2 passwords + HMAC bearer tokens; append-only audit; admin rule manager; analytics dashboards. Itsown scope table says authority veriﬁcation is an adapter returning synthetic payloads and does not call real databases.
+Gaps: forensics limited to SHA-256 duplicates and chronology (no QR/DSC/font/ELA); demo is scenario-driven; no programme-wise FSR/cadre depth visible; no
+addenda handling.What to copy: the low-conﬁdence OCR + source-unavailable ⇒  route to manual, not accuse scenario — it is exactly the safe-failure behaviour the brief wants.
+2.3.4 SIH11 (sohamramshette/SIH11) (S6)
+What it claims: React 19 + Vite + Tailwind front-end portal with four role consoles (Institution, Veriﬁcation Oﬃcer, Senior/Directorate Oﬃcer, Admin), public portal
+with application-status search, rule-engine conﬁguration UI, "AI vs human review" distinction, oﬃcer performance metrics, CSV export, cryptographic audit trail.
+Gaps: repository (as fetched) contains only the front-end folder; role-based access is a "simulation"; no back-end, forensics or evaluation evidence in the repo; 3commits.
+What to copy: a Directorate/Senior-oﬃcer approval step for adverse actions →  natural home for maker-checker.
+2.3.5 CipherCore Verify (nonutsayan.github.io/CipherCore-verify) (S7)
+What it claims: single-page demo; "direct API validation against authoritative government registries (State Fire, DigiLocker State Land Registries, UniversityAﬃliation)"; "YOLOv8x-SIH26261" workstation counting; "SHA-256 Merkle chaining" ledger and a "7-validator consortium PoA network (AICTE HQ, IIT Bombay, …)";six mandatory documents attributed to "APH Section 2.1"; norms such as "FSR 1:20" and "terminal density 1:1 per intake".
+Gaps:
+Presents mock data as "live government API" — conﬂicts with the brief's rule not to assume access to restricted databases (R17).
+Blockchain consortium and ﬁne-tuned detector appear to be client-side simulations — over-claiming that a technical judge will probe.
+Its six-document list does not match AICTE's actual portal document list (which centres on Aﬃdavit-2, occupancy/completion certiﬁcate, structural stabilitycertiﬁcate for >30-year-old buildings, ﬁre safety certiﬁcate, etc.) [V] (S11).
+Infrastructure norms stated without clause references.Lesson: over-claiming is the fastest way to lose credibility — see the Claims Register (Section 7.6).
+2.3.6 Non-hackathon alternatives
+Category Examples What they do Why they are not a substitute
+AICTE's own portal e-governance approval system (since
+2010)
+Self-disclosure-based deﬁciency reports;
+committees (Scrutiny, Re-Scrutiny, EVC,
+SAC/SHC)
+Does not authenticate documents or cross-
+check across institutions/websites
+DigiLocker / API Setu Requester APIs; issued-document fetch
+with integrity HMAC
+Consent-based retrieval of issuer-signed
+documents
+Plumbing, not scrutiny; only issuers integrated;
+user consent needed
+KYC / document-
+veriﬁcation vendors
+Generic "AI document veriﬁcation" APIs
+(e.g., for admissions mark-sheets, ID
+cards)
+Identity/marksheet classiﬁcation and checks
+No AICTE rulebook, no institutional
+infrastructure/faculty logic, no EVC/LoD
+workﬂow
+
+=== PDF PAGE 6 ===
+Category Examples What they do Why they are not a substitute
+Other regulators'
+tools
+University admission-scrutiny efforts
+(DU plans) Detect manipulated admission documents Different document population and rules
+2.4 Cross-cutting drawbacks of existing solutions (and our counter)
+ID Drawback seen across the ﬁeld How v2.1 answers it
+D-
+01
+Frozen rules — one snapshot of the handbook; no addenda/cycle layering; no
+impact analysis U-01 layered rule packs, U-02 impact simulator
+D-
+02Simulated registries with no feasibility story (some labelled "live") U-06 veriﬁcation tiers + feasibility matrix; DigiLocker consent-pull; oﬄine-
+veriﬁable signals ﬁrst
+D-
+03
+Self-graded evaluation on the team's own generator; headline "0 false alarms";
+no CIs
+Section 6: template shift, Wilson CIs, FAR, abstention, red-team matrix;
+honest synthetic caveat
+D-04Detection without remedy U-03 remediation engine, U-04 Intake Planner
+D-
+05
+No view of "declared vs proven" and no check of the public website disclosures
+AICTE mandates U-05 claim coverage, U-07 Disclosure Auditor
+D-
+06
+Fragile single-signal forensics (software-name metadata, ELA alone, exact
+hash) Corroboration rule; calibrated severity; pHash+ORB; revision diff (P-02)
+D-
+07
+Security/privacy gaps (quick-login demo roles, no encryption/retention,
+unsandboxed parsing) C-13…C-18, P-03, P-04
+D-
+08 Over-claiming (live APIs, consortium blockchain, model names) Claims Register; honest labels; "Simulated" watermark on adapter responses
+D-09 Ungoverned feedback loops and no consistency view U-11 governed calibration; U-10 consistency index
+D-
+10 Operational friction (heavy asset downloads, model training before demo) One-command Docker; deterministic default; LLM optional
+D-
+11
+Floor-plan/dimension evidence barely addressed, despite the brief naming
+ﬂoor plans U-09 ﬂoor-plan reconciliation
+D-
+12Regional-language handling is UI-only in most P-05 multilingual OCR with conﬁdence gating
+2.5 Capability matrix (README-level; "not seen" ≠ "absent")
+Capability v2.0.0 v2.1 Pramana CrashCoders SmartValidate SIH11 CipherCore
+Category-scoped checklist ✔ ✔ ✔ ✔ ✔ UI ✔  (list
+differs)
+Cited, versioned rule pack ✔ ✔ ✔ partial partial UI ✘
+Base + addenda overlays with effectivecycle ✘ ✔  U-01 not seen ✘ ✘ ✘ ✘
+Impact simulation before publish partial ✔  U-02 not seen ✘ ✘ ✘ ✘
+Quantiﬁed remediation / planner ✘ ✔  U-03/04 not seen ✘ ✘ ✘ ✘
+Public-website disclosure audit ✘  (boolean
+input) ✔  U-07 not seen ✘ ✘ ✘ ✘
+Veriﬁcation tiers + feasibility matrix ✘ ✔  U-06 partial (proof
+ladder) ✘ ✘ ✘ ✘
+Real DSC check vs CCA roots prod path ✔  P-01 ✔ ✘ ✘ ✘ claim only
+PDF revision-level diff ✘ ✔  P-02 ✔ metadata ✘ ✘ partial
+
+=== PDF PAGE 7 ===
+Capability v2.0.0 v2.1 Pramana CrashCoders SmartValidate SIH11 CipherCore
+QR payload vs visible text ✔ ✔ ✔ not seen ✘ ✘ claim
+ELA (as supporting evidence) ✔ ✔(calibrated) not seen ✔ ✘ ✘ ✔
+Near-duplicate photo (pHash+ORB) ✔ ✔ ﬁngerprints exact hash ✘ ✘ ✘
+Cross-institution faculty dedup ✔ ✔ ✔  (+graph) partial ✘ UI partial
+Floor-plan area reconciliation ✘ ✔  U-09 not seen partial ✘ ✘ partial
+Encryption at rest + retention ✘ ✔  P-03 ✔ partial ✘ ✘ ✘
+Hindi OCR partial (conﬁg) ✔  P-05 ✔ UI only ✘ ✘ ✘
+Measured eval w/ CIs, FAR targets ✔  §6 strong (self-
+graded) small ✘ ✘ ✘
+One-command oﬄine demo ✘ ✔ needs asset fetch ✔ ✔ ✔ ✔
+3. Corrections to spec v2.0.0
+3.1 Index (severity: Crit = credibility or security failure if left; High; Med; Low)
+ID Area Correction Sev Effort
+C-01 Regulatory Adjunct/PoP caps are outdated (2025-26 addendum) Crit S
+C-02 Regulatory Cadre formula: Principal offset, rounding policy Crit S
+C-03 Regulatory Planning/Architecture cadre (1:2:6 vs 1:3:10) High S
+C-04 Regulatory Unveriﬁed FSR rows; Diploma formula missing from evaluator High S
+C-05 Regulatory Low-enrollment relaxation: exact condition and scope High S
+C-06 Regulatory Page/annexure references conﬂict; add verified ﬂag Crit S
+C-07 Regulatory Aﬃdavit-2 is portal-generated; validate against application record Med S
+C-08 Regulatory Structural certiﬁcate: issuer wording, validity boundary High S
+C-09 Model "Missing" is not a veriﬁcation status — add completeness dimension High S
+C-10 Model Rule pack must model addenda and cycle ( →  U-01) Crit M
+C-11 Regulatory Annexure-4: PC:student ratio table missing; numbers unveriﬁed High S
+C-12 Regulatory Annexure-14 covers 5 states only Med S
+C-13 Security Role chosen by the client at login Crit S
+C-14 Privacy Raw PAN stored; Aadhaar-derived values Crit S
+C-15 Security No encryption at rest; page PNGs served unauthenticated Crit M
+C-16 Privacy No retention policy (brief requires it) High S
+C-17 Security Hash chain is bypassable without external anchoring High S
+C-18 Security Untrusted-ﬁle parsing, upload hardening, LLM injection High M
+C-19 Licensing AGPL dependencies (PyMuPDF, Ultralytics) High M
+C-20 Build requirements.txt gaps and mismatches Med S
+C-21 Logic /365.25 date arithmetic gives wrong answers on anniversaries Crit S
+C-22 Forensics Corroboration rule — no single weak signal →  Mismatch Crit S
+
+=== PDF PAGE 8 ===
+ID Area Correction Sev Effort
+C-23 Forensics ELA limitations; use as supporting evidence only High S
+C-24 Forensics Font-subset check false-positive control Med S
+C-25 Forensics Photo-reuse thresholds and same-Trust handling Med S
+C-26 Audit Record rules applied, records checked, hashes of inputs High S
+C-27 Data Missing history tables required by the brief High M
+C-28 Evaluation Brief lists eight metrics; benchmark values are targets Crit S
+C-29 Workﬂow Enforce human review before adverse action in code High M
+C-30 Privacy Faculty identity path vs AICTE's Aadhaar authentication Med S
+C-31 Model Status roll-up semantics and manual-conﬁrmation path Med S
+C-32 Scope Scope drift to PS 26262; illustrative formats presented as facts Med S
+C-01 Adjunct / Professor-of-Practice caps are outdated — Crit
+Issue. v2.0.0 hard-codes adjunct_and_pop_max_pct = {Design: 20, Planning: 30, DEFAULT: 15} and a rule ADJUNCT_POP_AND_PG_PHD.
+Evidence.
+Original APH 2024-27 text: "Adjunct Faculty or Professor of Practice up to 15% of the required faculty strength", with separate wording for Design and
+Planning courses [V] (S15, partial text — the Design/Planning ﬁgures are truncated in the copy I read, so your 20/30 are [?]).
+2025-26 addendum (reported): Adjunct Faculty category done away with; PoP (including Associate/Assistant PoP) up to 20% of required faculty strength(cadre), 5% exclusively reserved for women PoPs on regular basis [R] (S13).
+UGC's separate guideline caps PoP at 10% of sanctioned posts — a different regulator; do not mix [V] (S13).
+Fix. Never store this as a ﬂat constant. Model it as a base value + dated overlay (U-01):
+// base/2024-25/faculty_norms.json
+{  "adjunct_or_pop": {    "default_max_pct_of_required_faculty": 15.0,    "Design":   {"max_pct": null, "note": "wording exists in APH 2024-27; value [?] verify"},    "Planning": {"max_pct": null, "note": "wording exists in APH 2024-27; value [?] verify"},
+    "source_ref": {"doc": "APH 2024-27", "clause": "[?]", "page": "[?]", "verified": false}  }}
+// overlays/addendum_2025_26.json
+{  "overlay_id": "ADD_2025_26_POP",  "applies_from_cycle": "2025-26",  "source_ref": {"doc": "Addendum/Corrigendum 2025-26 of APH 2024-27", "clause": "[?]", "page": "[?]", "verified": false},  "ops": [    {"op": "remove", "path": "/adjunct_or_pop"},
+    {"op": "set", "path": "/professor_of_practice", "value": {        "max_pct_of_required_faculty": 20.0,        "reserved_for_women_pct": 5.0,        "women_reserved_basis": "regular PoP / Associate PoP / Assistant PoP",        "counts_against_cadre": true,
+        "scope_note": "reported for engineering and technology; confirm other streams"}}  ]}
+Test. UG Engineering, required faculty 60, PoP engaged 14 →  under 2024-25 rules: 14/60 = 23.3% > 15% (ﬂag); under 2025-26 overlay: 23.3% > 20% (ﬂag); PoP 11
+→  18.3%: ﬂag under 2024-25, pass under 2025-26. This single case is a perfect live demo of why layering matters (Section 7.4).
+C-02 Cadre formula: Principal offset and rounding — Crit
+Issue. v2.0.0 states Prof = ⌊ F_req / R ⌋  × 1, Assoc = ⌊ F_req / R ⌋  × c2, Asst = F_req − Prof − Assoc. It (a) ﬂoors, (b) ignores that the Principal/Directoris counted separately, (c) leaves the rounding policy implicit.
+
+=== PDF PAGE 9 ===
+Evidence. The published UG table (E&T) is [V] (S8, S9): Principal/Director = 1; Professor = S/(20×R) − 1; Associate = S/(20×R) × 2; Assistant = S/(20×R) ×
+6; Total = S/20; R = 1+2+6 = 9. PG E&T uses R = 1+1+1 with no Principal row; MCA/MBA/PGDM use R = 9 with Principal 1.
+Fix.
+import mathEPS = 1e-9
+def ceil_tol(x: float) -> int:          # avoids 6.0000000001 -> 7    return math.ceil(x - EPS)
+def ug_cadre(S, fsr, ratio=(1, 2, 6), principal=1, relax=False, policy="ceil"):    R = sum(ratio)    total = (S / fsr) * (0.75 if relax else 1.0)
+    unit = total / R    rnd = ceil_tol if policy == "ceil" else round      # policy is config [A]    prof_cadre = rnd(unit * ratio[0])                  # includes Principal/Director    return {        "total_required": rnd(total),
+        "professor_cadre_incl_principal": prof_cadre,        "professors_excl_principal": max(prof_cadre - principal, 0),        "associate": rnd(unit * ratio[1]),        "assistant": rnd(unit * ratio[2]),    }
+Worked example (use as unit test). UG Engineering, S = 1080, fsr = 20:
+S/fsr = 54, unit = 54/9 = 6 →  Professor cadre 6 (Principal 1 + 5 Professors), Associate 12, Assistant 36, total 54 ✔ .
+With relaxation (×0.75): total 40.5 →  41; unit 4.5 →  Professor cadre 5, Associate 9, Assistant 27 (sum 41 ✔ ).
+Rounding is [A]. The handbook table shows fractions; oﬃcers round in practice. Expose rounding_policy in rules.json and print it in every ﬁnding("computed with ceiling rounding, tolerance 1e-9").
+C-03 Planning/Architecture cadre — High
+Issue. v2.0.0 uses [1,2,6], R=9 for UG Planning.
+Evidence. AICTE's formula table uses R=9 for UG Planning (FSR 1:16) [V] (S8). The same source lists a minimum cadre of 1:3:10 under CoA-based norms for
+standalone Architecture and Town Planning [V] (S8, section 6.3), plus special rules for allied-area faculty and tenure faculty (S8, note 6).
+Fix. Make cadre a property of (course_level, programme_stream, institution_kind); add institution_kind ∈  {STANDARD, STANDALONE_ARCH_PLANNING}
+with its own ratio and allied-faculty caps; mark which clause governs. When unsure, route to Manual Review Required rather than computing a deﬁciency.
+C-04 Unveriﬁed FSR rows and missing Diploma formula — High
+Veriﬁed rows [V] (S8, S9): UG E&T 1:20; UG Planning 1:16; UG Applied Arts & Crafts 1:15; UG Design 1:15; UG HMCT 1:20; PG E&T 1:15 (R=3); PG Planning 1:10(R=3); MCA 1:20 and MBA/PGDM 1:20 (R=9, Principal 1).
+Unveriﬁed [?]: UG Computer Applications 1:25, UG Management 1:25 (BBA/BCA/BMS came under AICTE from 2024-25 [V] S17 — the ratios themselves need the
+APH Appendix); PG Design, Applied Arts & Crafts, HMCT ratios (15/15/12 in v2.0.0).
+Diploma [V] (S10, older handbook; conﬁrm for 2024-27): Principal 1; HoD 1 per department; Lecturers = S/25 − (Principal + HoD); total S/25. Your matrix
+stores hod_per_dept but the evaluator text has no formula — add it.
+Fix. Tag each cell verified: true|false. Unveriﬁed cells evaluate to Manual Review Required, never to a deﬁciency.
+C-05 Low-enrollment relaxation — High
+Evidence [V] (S8): "If the average admission during the last 3 years is ≤ 50% of the average sanctioned intake, the requirement of faculty may be reduced by 25%"(worked example in the source multiplies 60 by 0.75 = 45).
+Fix.
+Input is avg_admissions_3yr / avg_sanctioned_3yr ≤ 0.50. Store both numerators/denominators, not just a percentage.
+Apply at programme level; surface "relaxation applied" as a ﬁnding with the three yearly ﬁgures.
+Make the scope conﬁgurable relaxation_applies_to: [...] because the handbook example may be limited by programme type [?].
+Edge: any of the three years missing →  relaxation not applied and ﬁnding says why.
+
+=== PDF PAGE 10 ===
+C-06 Page and annexure references conﬂict — Crit
+Issue. v2.0.0 cites Annexure-14 at p. 180 and Annexure-18 at p. 184. AICTE's own 2026-27 EoA letter cites "Annexure-18, page 180"[V] (S12). At least one of yourreferences is wrong, which undermines the "every rule has a veriﬁable source_ref" claim.
+Fix.
+1. Replace every page value that you have not personally checked in the PDF with "page": null.
+2. Add verified: bool, verified_by, verified_on, pdf_sha256.
+3. UI shows an amber "citation not yet veriﬁed" chip for verified:false.
+4. Pair every clause number with text anchor (ﬁrst six words of the clause) so the reference survives page re-numbering across versions.
+"source_ref": {
+  "doc": "APH 2024-27", "pdf_sha256": "<hash of the file you used>",  "chapter": "VI", "clause": "(h)", "anchor": "Structural Stability Certificate is required if",  "page": 80, "verified": true, "verified_by": "<initials>", "verified_on": "2026-10-26"}
+C-07 Aﬃdavit-2 handling — Med
+Evidence. The portal-generated aﬃdavits carry the application number, institute type, region and date in the header and are generated from the application itself[V] (S16; S11 lists "Portal Generated Aﬃdavit 2"). The "sworn before First Class Judicial Magistrate / Notary Public / Oath Commissioner" requirement is reported
+in handbook text [R] (S26). The ₹100 stamp minimum in v2.0.0 is [?].
+Fix. Validate the aﬃdavit against the application record: application number, institution type, state/region, date within the cycle, and that its declarations (e.g.,"uploaded occupancy/completion certiﬁcate and structural stability certiﬁcate") are consistent with uploaded documents — a declared-but-missing document is a
+strong, explainable ﬁnding. Keep the DSC/stamp checks, but mark stamp amount [?] until veriﬁed.
+C-08 Structural stability certiﬁcate — High
+Evidence. AICTE's portal document list says "Stability Certiﬁcate from Competent Authority in case existing buildings are of more than 30 years old"[V] (S11).v2.0.0 says "registered Structural Engineer" and cites a certiﬁcate format page.
+Fix.
+Accept both issuer_type ∈  {COMPETENT_AUTHORITY, REGISTERED_STRUCTURAL_ENGINEER}only if the clause text allows it; otherwise route a mismatch toManual Review (not a deﬁciency) [?].
+The "valid 5 years" and "Government buildings > 50 years" exception are [?] — verify.
+Trigger uses calendar arithmetic (C-21), with an explicit boundary policy (inclusive/exclusive) and a "±1 day near-boundary ⇒  Manual Review" guard.
+C-09 "Missing" is not a veriﬁcation status — High
+Issue. v2.0.0 reports a missing mandatory conditional document as Mismatch Detected. The brief's six statuses describe veriﬁcation outcomes;
+"missing/incomplete" is a completeness ﬁnding.
+Fix. Two orthogonal dimensions per requirement:
+Dimension Values
+completeness COMPLETE, MISSING, INCOMPLETE, NOT_APPLICABLE
+verification_status the six brief statuses
+Roll-up shows both ("3 missing, 2 mismatches"). A missing document has verification_status = null (nothing to verify), not "Mismatch".
+C-10 Rule pack must model addenda and cycle — Crit (implemented as U-01)
+v2.0.0's manifest.json ("AICTE_APH_2024_2027, rule_pack_version 2.0.0, effective 2026-04-01 … 2027-03-31") treats the three-year handbook as one frozenartifact. Replace with base + overlays + cycle resolution (Section 4, U-01) and add a cycle parameter to evaluate():
+def evaluate(facts, rule_stack, cycle: str, as_of_date: str, what_if_overrides=None) -> dict: ...
+cycle selects which rules apply; as_of_date selects how document validity is computed. They are different.
+
+=== PDF PAGE 11 ===
+C-11 Annexure-4 gaps — High
+DEPT_PC_AND_RATIO_CHECK says "check PC:Student ratio per Annexure-4 (1:6 to 1:10)" but rules.json has no ratio table, only
+min_pcs_per_department_lab = 20.
+Numbers 20 PCs, 5% printers, 1 A1 plotter, bandwidth tiers 100/300/500/1000 Mbps are [?].
+Competitors state norms like "1:1 terminals per intake" without clauses (S7) — do not copy.
+Fix. Add the ratio table only after you copy it from the PDF; until then the rule yields Manual Review Required: "ratio table not loaded". Mark each
+constant verified.
+C-12 Annexure-14 ﬁre authorities — Med
+Five states are not enough, and an unknown state must not become an accusation.
+Fix.state_authority_registry with status ∈  {VERIFIED_LIST, PARTIAL, UNKNOWN}; unknown state or unlisted authority name ⇒  Manual Review Requiredwith message "issuing authority not in loaded Annexure-14 list (state X)". Add fuzzy name matching (rapidfuzz) and a manual-add workﬂow for oﬃcers (maker-
+checker).
+C-13 Role chosen by the client at login — Crit
+Issue.POST /api/auth/login {"username": "...", "role": "Scrutiny_Officer"} lets any caller request any role.
+Fix.
+users(user_id, username, pw_hash_argon2id, role, region, is_active, totp_secret_enc, created_at)
+POST /api/auth/login {username, password, totp?}  -> JWT {sub, role(from DB), region, jti, exp<=60min}Refresh token rotation; revoke list on logout; lockout after N failures; rate-limit per IP/user.Object-level checks: Applicant sees only own inst_id; officers see only their region; Rules_Admin cannot decide applications.
+The demo "role switcher" becomes separate seeded logins or an Admin impersonate action that writes an audit entry. In production map identities from AICTE
+SSO/NIC (placeholder adapter).
+C-14 PAN and Aadhaar-derived values — Crit
+Issue. You promise "zero raw government ID storage" yet store raw pan_number for ghost-faculty dedup.
+Fix.
+Store pan_digest = HMAC-SHA256(K_pan, normalized_pan) and pan_last4 for display; K_pan from env/KMS, not in the DB; plan dual-digest rotation.
+Dedup joins on digest only.
+Aadhaar: AICTE has been permitted voluntary Aadhaar authentication [V] (S20). Do not persist any Aadhaar-derived value (including digests) unless legal
+review says it is allowed [?]; consume only the veriﬁcation result + reference id from AICTE's own service in production.
+Redaction tests: grep logs/PDFs/JSON for 10-char PAN and 12-digit patterns in CI.
+C-15 Encryption at rest; unauthenticated page images — Crit
+Issues. (1) Documents and rendered PNGs are stored in clear. (2) "All endpoints except /api/auth/login and /static/* require JWT" means page PNGs arepublicly fetchable.
+Fix.
+Envelope encryption: per-document random 256-bit DEK, AES-256-GCM; DEK wrapped by KEK (env now, KMS/HSM in production); store enc_alg,
+wrapped_dek, nonce, key_id.
+PNG pages: generate on demand or store encrypted; serve through authenticatedGET /api/pages/{doc_id}/{n} or short-lived (≤60 s) signed URLs boundto user and doc.
+Never log extracted PII values; log ﬁeld names + hashes.
+C-16 Retention — High
+The brief explicitly requires "data-retention safeguards" [V] (S1).
+Fix.retention_policy conﬁg (e.g., documents N days after application closure/withdrawal), legal_hold ﬂag, nightly purge job that deletes blobs and derivedimages but keeps hash + metadata tombstone so the audit chain stays valid; each purge writes an audit entry. Align wording with the DPDP Act 2023 principles
+(purpose limitation, storage limitation) [?] — have someone with legal context review.
+
+=== PDF PAGE 12 ===
+C-17 Audit chain anchoring — High
+SQLite triggers stop casual edits but anyone with ﬁle access can drop triggers and recompute the chain. It is tamper-evident only if the head is held elsewhere.
+Fix.
+chain_checkpoints(log_id, head_hash, mac, created_at) where mac = HMAC(K_audit, head_hash || log_id || ts); create a checkpoint every N
+entries.
+Publish the head hash to a second location (separate store / signed git commit / RFC 3161 timestamp if a TSA is available).
+verify_chain() checks: chain continuity, checkpoint MACs, and that the externally published head is a preﬁx of the local chain.
+State the property honestly: "tamper-evident, not tamper-proof"; production path = PostgreSQL with append-only role + WORM replication.
+C-18 Hostile-input handling — High
+Fix.
+Parse PDFs/images in a sandboxed subprocess (rlimit CPU/memory, wall-clock timeout) — Pramana does this (S3), so judges may ask.
+Reject: encrypted PDFs, PDFs with JavaScript/Launch actions/embedded ﬁles, > N pages, > M MB, image decompression bombs(PIL.Image.MAX_IMAGE_PIXELS).
+Sniff true ﬁle type; random storage ids; never use user ﬁlenames for paths.
+If an LLM extractor is added (P-05): treat document text as data; constrain output to a JSON schema; accept an extracted value only if it is foundverbatim/normalised in the OCR text (grounding check); never act on instructions found in documents; add a "planted instruction" test set (Pramana reports
+0/30 followed — S3).
+C-19 Licensing — High
+Component in v2.0.0 Issue v2.1 replacement
+PyMuPDF (fitz) AGPL-3.0 / commercial dual licence [?]
+(conﬁrm on project page)
+pypdfium2 (render), pdfplumber/pdfminer.six (text, boxes), pikepdf
+(structure, revisions), pypdf
+Ultralytics YOLOv8 AGPL-3.0 / enterprise licence [?] Apache-2.0 detector weights via ONNX Runtime (e.g., YOLOX); conﬁrm each
+weight's licence
+PaddleOCR (named, not inrequirements) Apache-2.0 but heavy rapidocr-onnxruntime (Apache-2.0) + Tesseract fallback
+Pramana's README independently says it avoids AGPL PDF libraries and AGPL/non-commercial detector/OCR weights [V] (S3). A government deployment path
+with copyleft network clauses is a legitimate jury question.
+C-20 requirements.txt gaps — Med
+Missing or mismatched: PaddleOCR (named in stack, absent from ﬁle); Tesseract binary and eng+hin+tam language packs (need apt); python-dateutil;
+argon2-cffi; cryptography; rapidfuzz; pikepdf; pdfplumber; onnxruntime; rapidocr-onnxruntime; httpx; selectolax or beautifulsoup4; pytest,
+hypothesis. ultralytics drags in PyTorch (large) — remove. Provide a Dockerfile + docker-compose.yml that builds with no network at run time (D-10).
+C-21 Date arithmetic — Crit
+Issue.Δ = (as_of − issue) / 365.25, then > 30.0 / ≤ 5.0.
+Why it is wrong. The ratio is not calendar-exact. Counter-examples:
+Check Issue date As-of Days Days/365.25 /365.25 verdict Correct (calendar)
+"more than 30 years" 1996-01-01 2026-01-01 10,958 30.0014 > 30 →  triggers exactly 30 years →  does not trigger
+"valid 5 years from issue" 2020-01-01 2025-01-01 1,827 5.0021 > 5 →  expired exactly 5 years →  boundary policy decides
+Fix.
+from datetime import date, timedelta
+
+=== PDF PAGE 13 ===
+def add_years(d: date, n: int) -> date:    try:        return d.replace(year=d.year + n)
+    except ValueError:                      # Feb 29 -> Feb 28 policy [A]        return d.replace(year=d.year + n, day=28)
+def older_than(issue: date, as_of: date, years: int) -> bool:    return as_of > add_years(issue, years)
+def valid_for_years(issue: date, as_of: date, years: int, inclusive_end=True) -> bool:    end = add_years(issue, years) - (timedelta(0) if inclusive_end else timedelta(days=1))    return as_of <= end
+def near_boundary(issue, as_of, years, days=1):   # route to Manual Review
+    return abs((as_of - add_years(issue, years)).days) <= days
+Add property-based tests (hypothesis) over random dates; include the table above as ﬁxed unit tests.
+C-22 Corroboration rule and severity model — Crit
+Principle. The brief says ﬂags are "preliminary indicators requiring human veriﬁcation, not conclusive proof" [V] (S1). A single weak signal must never produce
+Mismatch Detected.
+Signal family Examples Strength
+Cryptographic / issuerDSC bytes modiﬁed after signing; issuer-signed QR payload contradicts visible value; issuer
+source (T1/T2) contradicts submitted value High
+Structural Later-revision text overlay; value span in font unused elsewhere in doc/template; baseline
+shift Medium
+Pixel ELA local-variance anomaly at value bbox; splice boundary Medium (supporting)
+Semantic / cross-
+document Survey number mismatch across deed/plan/form; date-order impossibility Medium–High (High if the contradicting
+record is authoritative)
+Identiﬁer reuse Same certiﬁcate number / seal / photo on another institution High if cross-Trust; Medium if same Trust (C-
+25)
+Hygiene Scanner producer tag, incremental save, mod-date > creation-date Low — display only
+Decision table.
+Evidence combination Resulting status
+≥ 1 High Mismatch Detected
+≥ 2 Medium from different families Mismatch Detected
+exactly 1 Medium Manual Review Required (+ explanation, benign alternatives)
+Low only no status change (info chip)
+Low OCR conﬁdence / source unavailable / near-boundary date Manual Review Required / Source Unavailable — never accuse
+Every ﬂag stores benign_explanations[] (e.g., "scanner re-compression", "font fallback for Devanagari") shown to the oﬃcer.
+C-23 ELA — High
+ELA assumes a single prior JPEG compression; scanned documents are already re-compressed and modern editors re-save images, so ELA produces both falsepositives and false negatives. Use it as supporting evidence only (≤ Medium, only when the anomaly is localised on the value bounding box and structuralevidence is absent or ambiguous). Report ELA's standalone precision/recall on your hard-negative scans in the evaluation (Section 6) rather than asserting it
+works.
+C-24 Font-subset check — Med
+
+=== PDF PAGE 14 ===
+False-positive sources: bold label vs regular value on the same line (normal); font fallback for Devanagari/Tamil glyphs; PDF producers that subset fonts perpage.
+Fix. Compare a value span's font against other value spans of the same ﬁeld type across the document/template, not against its label. Measure baseline shiftrelative to the line's median baseline; ignore |Δy₀| < 0.3 pt (rounding). Require both anomalies (font + shift) for Medium; either alone ⇒  Low.
+C-25 Photo reuse thresholds and same-Trust handling — Med
+pHash ≤ 5 and ORB inliers ≥ 18 are starting points [A]; derive thresholds from an ROC on a dev set containing near-duplicates and unrelated look-alike
+labs (similar furniture layouts). Report the operating point and its FAR.
+Cross-Trust reuse ⇒  High. Same-Trust reuse ⇒  Medium (could be shared campus or generic stock) ⇒  Manual Review. Same institution, previous year ⇒Low unless the claim is "newly built lab".
+Always show the matched images side by side with keypoint lines (you already do).
+C-26 Audit record content — High
+The brief wants "rules applied, records checked, source responses, alerts, observations, actions" [V] (S1). Add an evaluation_runs table and reference it from
+audit_trail:
+CREATE TABLE evaluation_runs (
+  run_id TEXT PRIMARY KEY, inst_id TEXT NOT NULL, cycle TEXT NOT NULL, as_of_date DATE NOT NULL,  facts_sha256 TEXT NOT NULL, ruleset_sha256 TEXT NOT NULL, evaluator_version TEXT NOT NULL,  rules_applied_json TEXT NOT NULL,      -- [{rule_id, layer_id, source_ref_hash}]  records_checked_json TEXT NOT NULL,    -- [{table, key, version}]  findings_json TEXT NOT NULL, rollup_status TEXT NOT NULL, created_at_ist TEXT NOT NULL
+);
+C-27 Missing history tables — High
+Brief R02 lists previous EoA, approved programmes/intake, accreditation, compliance/deﬁciency status, TER status, application history. Add:
+CREATE TABLE eoa_history (inst_id TEXT, academic_year TEXT, programme_stream TEXT, course_level TEXT,  approved_intake INTEGER, status TEXT, letter_ref TEXT, PRIMARY KEY (inst_id, academic_year, programme_stream, course_level));CREATE TABLE application_history (app_id TEXT PRIMARY KEY, inst_id TEXT, academic_year TEXT, category TEXT,  submitted_at TEXT, outcome TEXT, lod_count INTEGER);
+CREATE TABLE accreditation_records (inst_id TEXT, programme TEXT, body TEXT, valid_from DATE, valid_to DATE, ref_no TEXT);CREATE TABLE deficiency_history (inst_id TEXT, academic_year TEXT, deficiency_code TEXT, status TEXT, closed_on DATE);CREATE TABLE ter_ledger (inst_id TEXT, academic_year TEXT, amount_inr INTEGER, status TEXT, receipt_no TEXT);
+New checks enabled: intake claimed ≠ intake approved last year; NBA/NAAC claim vs record validity; repeated deﬁciency patterns; TER paid for a different year.
+C-28 Evaluation framing — Crit
+1. The brief lists eight items (extraction accuracy, validation accuracy, anomaly detection, source-veriﬁcation rate, discrepancy-identiﬁcation reliability, averageveriﬁcation time, alert timeliness, reduction in manual effort) [V] (S1). v2.0.0 says "seven". Split metric 7 into 7a alert timeliness and 7b manual-effort
+reduction.
+2. The values in the "Target Prototype Benchmark" column (96.8%, 98.0%, 93.8/100/96.8, 100%, 97.8%, 86.1%) are targets chosen before any run. Label them
+"targets"; report measured values beside them.
+3. "Successful source-veriﬁcation rate = handshakes resolved without unhandled exception" is trivially 100% for a simulator. Redeﬁne as status-mappingaccuracy under fault injection (Section 6.3).
+4. The 18-minute manual baseline is [A]; replace it with a measured time-and-motion estimate (Section 6.6) or keep the label "assumed".
+C-29 Enforce human review in code — High
+Add an explicit state machine; the API must make adverse transitions impossible for the system actor.
+RECEIVED →  AUTO_SCREENED →  OFFICER_REVIEW →  { CLEARED                                            | LOD_DRAFTED →  LOD_CONFIRMED (officer, justification) →  LOD_ISSUED
+                                            | EVC_RECOMMENDED (officer)                                            | SPEAKING_ORDER_ESCALATED (regional officer) }
+
+=== PDF PAGE 15 ===
+Rules: System_AI may only reach AUTO_SCREENED/LOD_DRAFTED; LOD_ISSUED requires Scrutiny_Officer + justiﬁcation text; SPEAKING_ORDER_ESCALATED
+requires Regional_Officer; Mark_Verified_Override on a High ﬁnding needs a second approver (maker-checker). Enforce in service layer and with a DB
+CHECK/trigger on allowed transitions.
+C-30 Faculty identity path — Med
+State the real-world path in the deck: AICTE-side veriﬁed faculty identiﬁers (possibly via voluntary Aadhaar authentication [V] S20) are the production source oftruth; your PAN-digest dedup is a fallback and a cross-check, useful because Aadhaar use is voluntary. Add a data-quality rule: PAN format validation (10 chars,
+pattern) and duplicate-within-institution detection.
+C-31 Status roll-up semantics — Med
+Keep your precedence Mismatch > Expired > Manual Review > Verification Pending > Source Unavailable > Verified, but deﬁne:
+Requirement-level statuses roll up to application level; Verified only if all mandatory requirements are Verified, completeness is COMPLETE, and no openHigh ﬂags.
+Source Unavailable is not an institution failure: retries with backoff + circuit-breaker; after N attempts →  oﬃcer task "conﬁrm manually".
+Manual conﬁrmation by an oﬃcer results in Verified with method = MANUAL_CONFIRMATION, oﬃcer id, evidence note (so the six-status contract ispreserved).
+Always display the count breakdown beside the roll-up badge.
+C-32 Scope drift and "illustrative" formats — Med
+Queue/SLA/undertaking tracker/alert centre overlap with PS 26262 (workﬂow automation, compliance monitoring, alerts) [V] (S2). The brief for 26261 stillrequires a dashboard and alerts — keep them minimal.
+Formats given as facts but unveriﬁed: SHCIL veriﬁcation URL pattern, ICAI UDIN "18-digit" (UDIN is commonly described as an 18-character alphanumericcode [?]), "TER" expansion/Bharatkosh behaviour. Label every such item "illustrative format — simulated adapter" in the deck and UI.
+YOLO workstation counting: keep advisory and optional; AGPL issue (C-19). EVC walkthrough ≥ 30 min check is cheap (ffprobe duration) but its clause [?]
+must be veriﬁed.
+4. New unique additions
+4.1 Prioritisation
+"Overlap" = whether any public competitor README I read shows something similar (not proof of absence).
+ID Feature Judge-visible
+impact Overlap with public repos EffortTier
+U-
+01
+Layered rule packs: base handbook + dated addenda, cycle resolution, per-
+value provenance Very high None seen M A
+U-
+02Impact simulator + maker-checker publish gate Very high None seen M A
+U-
+03 Counterfactual remediation engine ("what would make this pass") Very high None seen M A
+U-06 Veriﬁcation tiers + feasibility matrix + DigiLocker consent-pull path High Partial (Pramana proof ladder) S–M A
+U-
+12Safety panel: False-Accusation Rate, abstention, CIs High None seen (others report "0 false
+alarms") S A
+U-
+04 Intake Planner for applicants (inverse of the evaluator) High Partial (Pramana readiness check) M B
+U-
+07 Disclosure Auditor: public-website three-way check High None seen M–L B
+U-
+05 Claim coverage ("declared vs proven") + risk-based inspection focus Medium–High Partial (proof ladder, inspection brief)M B
+
+=== PDF PAGE 16 ===
+ID Feature Judge-visible
+impact Overlap with public repos EffortTier
+U-08 Reproducibility bundle (re-derivable decisions for appeals) Medium–High Partial (signed evidence pack) S–M B
+U-
+09 Floor-plan area reconciliation (+ unit sanity check) Medium Partial (CrashCoders room detection)M B
+U-
+10 Inter-oﬃcer consistency index Medium None seen M C
+U-
+11 Governed calibration queue (feedback never edits rules silently) Medium Contrasts CrashCoders instant
+recalibration S–M C
+Parity items (needed so you do not look weaker than Pramana): P-01 … P-08 in 4.3.
+U-01 Layered rule packs — base handbook + addenda overlays
+What. Represent the regulation the way AICTE actually publishes it: a base handbook plus dated addenda/corrigenda/instructions. evaluate() receives aresolved rule stack for a cycle; every threshold carries provenance ("value 20% came from ADD_2025_26_POP, replacing the base 15%").
+Why it is unique. The only competitor README that mentions addenda (Pramana) describes a versioned ruleset built from the handbook and its addenda; noneshows overlays with effective-cycle resolution, per-value provenance, or impact analysis (S3). The handbook does change mid-cycle [V/R] (S13, S14, S25), so this
+is a requirement, not decoration.
+Design.
+backend/rules/aph_2024_27/  index.json                      # ordered list of layers + status (DRAFT|VERIFIED|PUBLISHED)
+  base/2024-25/{checklists,rules,norms}.json  overlays/    addendum_2025_26_pop.json    addendum_2026_27_supernumerary.json   # sample content, verified:false until checked    instruction_<date>_<slug>.json        # AICTE "authorized instructions" (brief R08)
+Overlay format:
+{  "overlay_id": "ADD_2026_27_SUPERNUMERARY",  "kind": "ADDENDUM",
+  "applies_from_cycle": "2026-27",  "applies_to_cycle": null,  "order": 20,  "status": "DRAFT",  "source_ref": {"doc": "Addendum/Corrigendum 2026-27 of APH 2024-27", "clause": "[?]", "page": null, "verified": false},
+  "ops": [    {"op": "set", "path": "/supernumerary/management_design_other/max_pct_of_sanctioned", "value": 25.0},    {"op": "set", "path": "/eligibility/require_nil_deficiency_on_self_disclosure", "value": true}  ]}
+Resolver:
+import copy, json, hashlib
+def in_cycle(ov, cycle):                       # "2025-26" strings sort lexicographically    return ov["applies_from_cycle"] <= cycle and (ov["applies_to_cycle"] is None or cycle < ov["applies_to_cycle"])
+def resolve_rules(base: dict, overlays: list[dict], cycle: str):    resolved, provenance = copy.deepcopy(base), {}    for ov in sorted((o for o in overlays if in_cycle(o, cycle)), key=lambda o: (o["applies_from_cycle"], o["order"])):        for op in ov["ops"]:
+            apply_op(resolved, op)             # set/add/remove/replace via JSON Pointer; schema-validated            provenance.setdefault(op["path"], []).append(ov["overlay_id"])    digest = hashlib.sha256(json.dumps(resolved, sort_keys=True, separators=(",", ":")).encode()).hexdigest()    return resolved, provenance, digest
+Conﬂict rule: two overlays writing the same pointer in the same cycle are rejected unless the later one declares supersedes: <overlay_id>.
+
+=== PDF PAGE 17 ===
+UI — "Rule Lens".
+Hover any threshold on a ﬁnding →  popover: base value →  overlay →  resolved value, clause anchor, verified chip.
+Cycle slider (2024-25 · 2025-26 · 2026-27) on an application: ﬁndings re-render; ﬂips are highlighted. This is the money shot of the demo.
+Acceptance tests.
+1. Same facts + same cycle + same stack →  identical ruleset_sha256 and identical ﬁndings.
+2. Removing an overlay restores base behaviour exactly.
+3. Overlay with unknown pointer or wrong type fails schema validation.
+4. Conﬂicting overlays rejected.
+5. Golden test: PoP 11/60 = 18.3% →  ﬂagged in 2024-25 (15% cap), passes in 2025-26 (20% cap) [R].
+Honest limitation. You will not have the veriﬁed addendum text on day one. Ship the mechanism with sample overlays marked verified:false and say so; thecontribution is the mechanism and the workﬂow. Replace sample values as you verify them.
+Effort M · Tier A.
+U-02 Impact simulator + maker-checker publish gate
+What. Before any new layer goes live, run it against all stored applications (or the benchmark suite) and show exactly who ﬂips.
+Output (example layout).
+Institution Requirement Old New Reason Evidence
+(synthetic) PoP share, UG E&T Mismatch DetectedVerified cap 15% →  20% PoP 11/60
+…
+Summary tiles: n_flipped, newly_clear, newly_deficient, top affected programmes/states, runtime.
+Mechanics.
+def impact(candidate_overlay, population_facts, cycle, as_of):    cur, _, _ = resolve_rules(BASE, OVERLAYS, cycle)
+    new, _, _ = resolve_rules(BASE, OVERLAYS + [candidate_overlay], cycle)    flips = []    for inst_id, facts in population_facts.items():        a, b = evaluate(facts, cur, cycle, as_of), evaluate(facts, new, cycle, as_of)        flips += diff_findings(inst_id, a, b)          # keyed by requirement_id
+    return summarize(flips)
+Because evaluate() is a pure function over cached facts (your v2.0.0 design), 1,000 applications is a seconds-level job [A — measure it].
+Maker-checker.
+Rules_Admin A drafts →  Rules_Admin B (different user) approves; self-approval blocked.
+Publication = new immutable layer + signature over ruleset_sha256; rollback = publish a superseding layer (never edit).
+Publish blocked if any changed clause has verified:false, unless an override with justiﬁcation is recorded.
+Every step is an audit_trail row.
+Acceptance tests. Deterministic ﬂip list; self-approval returns 403; published layer cannot be mutated; rollback restores previous resolved hash.
+Effort M · Tier A.
+U-03 Counterfactual remediation engine
+What. For every deﬁciency, compute minimal quantiﬁed ﬁxes. Detection-only tools stop at the ﬂag; oﬃcers drafting an LoD and institutions rectifying both need
+"how much, of what".
+Worked example (use in the demo). UG Engineering, S = 1080 (annual intake 270 × 4 yrs), fsr = 20, R = 9. Present: Professor cadre incl. Principal 4,
+Associate 10, Assistant 30 (total 44). Required (C-02): 6 / 12 / 36 (total 54).
+Option Action Result Caveat
+(a) Hire +2 Professors, +2 Associates, +6 Assistants Meets 54 at intake 270/yr Needs qualiﬁed, veriﬁable hires
+
+=== PDF PAGE 18 ===
+Option Action Result Caveat
+(b) Reduce intake Intake cap S_max = min(4/1, 10/2, 30/6) × 9 × 20 = 720
+→  180/yr No hires needed Large cut; cadre-limited (Professor cadre
+binds)
+(c) Mixed +2 Professors →  S_max = min(6, 5, 5) × 180 = 900 →
+225/yr
+One cadre ﬁx + moderate
+cut
+(d) Relaxation
+check
+If 3-yr avg admissions ≤ 50% of sanctioned →  requirement ×0.75 =
+40.5 →  41
+Present 44 ≥ 41 →  no
+deﬁciency Only if admission history qualiﬁes (C-05)
+Assumption [A]: no substitution across cadres unless the clause allows it.
+Algorithm (closed forms because requirements are monotone in intake).
+def max_intake_supported(have, fsr, ratio=(1,2,6), relax=False):
+    R = sum(ratio); unit_max = min(have[i] / ratio[i] for i in range(3))   # have = (prof_cadre, assoc, asst)    return unit_max * R * fsr / (0.75 if relax else 1.0)                  # S_max
+def remedies_fsr(prog, rules):    need = ug_cadre(prog.S, rules.fsr, relax=prog.relax)    gap = {k: max(need[k] - prog.have[k], 0) for k in ("professor_cadre_incl_principal", "associate", "assistant")}
+    opts = []    if any(gap.values()): opts.append({"type": "HIRE", "gap": gap})    s_max = max_intake_supported((prog.have_prof, prog.have_assoc, prog.have_asst), rules.fsr, relax=prog.relax)    if s_max < prog.S: opts.append({"type": "REDUCE_INTAKE", "S_max": s_max, "annual": s_max / prog.years})    return opts
+Other rule families:
+PC / printer / plotter:+N PCs = ceil(required − have); printers ceil(0.05 × PCs)[?].
+Bandwidth: upgrade to next tier or cap total intake at the tier boundary (e.g., ≤ 300 for 100 Mbps) [?].
+Area deﬁcit:+X sq.m or intake reduction to Y.
+Expired/missing document: list exact artefact to obtain + issuer type. Do not invent undertaking routes; only show one where the handbook text provides it
+[?].
+Combined: search for the smallest intake reduction that clears all deﬁciencies (monotone →  binary search per programme).
+Output language. Every option is labelled "advisory — computed from the loaded rule stack; ﬁnal requirements are determined by AICTE".
+Acceptance tests. (1) Applying option (a)/(b)/(c) to the inventory and re-running evaluate() yields zero faculty deﬁciency (closure property). (2) Monotonicity:increasing intake never reduces requirements. (3) Remedy text cites the same source_ref as the ﬁnding.
+Effort M · Tier A.
+U-04 Intake Planner (applicant-side inverse of the evaluator)
+What. An institution enters a target ("+60 CSE intake" or "new programme") and gets the full requirement set — faculty by cadre, PCs, printers, bandwidth tier, area,required documents, whether the application will route to EVC — versus current inventory, with a gap list.
+Why it matters. The 2026-27 addendum reportedly demands "nil deﬁciency based on self-disclosure" [R] (S14). A planner reduces deﬁciencies at source, which is
+the point of "earliest stage" validation in the brief.
+Design.required_inventory(target, rules) is the same code the evaluator uses, run backwards; POST /api/planner/intake {inst_id, changes[]}
+returns {requirements, current, gaps, routing, documents_required, doc_expiry_warnings}.
+Property test (closure). For random targets: set inventory exactly equal to the planner's requirements →  evaluate() returns no eligibility ﬁndings.
+UI. Sliders for intake, programme add/remove; live table (green/amber/red); "Export plan" PDF.
+Effort M · Tier B.
+U-05 Claim coverage ("declared vs proven") + risk-based inspection focus
+What. Decompose the application form into atomic claims (ﬁre NOC valid till D, N regular faculty, M PCs, A acres, NBA valid, …). Each claim has an evidence level:
+Level Meaning
+L0 Declared only
+
+=== PDF PAGE 19 ===
+Level Meaning
+L1 Document uploaded, unsigned, internally consistent
+L2 Document consistent across form ↔  PDF ↔  historical record
+L3 Cryptographically anchored (DSC chain / issuer-signed QR / DigiLocker XML)
+L4 Conﬁrmed at source (T2) or on site (EVC)
+Outputs. (1) Claim Coverage % = mandatory claims at ≥ L2 (and ≥ L3 where available); (2) Inspection Focus List — top-N claims ranked by weight × (1 −
+evidence_strength) × anomaly_factor, each with an explainable reason. Directly useful when deciding which cases/claims go to EVC.
+Overlap. Partial with Pramana's proof-strength ladder (S3). Your distinct angle: the coverage KPI and inspection sampling tied to self-disclosure.
+Acceptance tests. Coverage monotonic with added evidence; ranking stable under reordering; every ranked item shows the formula inputs.
+Effort M · Tier B.
+U-06 Veriﬁcation tiers + feasibility matrix (+ DigiLocker consent-pull)
+What. An honest model of how each document can be veriﬁed, shown in the product and in the deck. It prevents the failure mode seen in the ﬁeld — mockregistries labelled "live" (S7) — and respects the brief's rule not to assume access to restricted databases [V] (S1).
+Tiers.
+TierMethod Example Prototype status
+T0 Declared Form ﬁeld real
+T1 Cryptographic, oﬄine DSC chain to CCA root; issuer-signed QR; DigiLocker XML integrity HMAC real (P-01)
+T2Authorised issuer interface DigiLocker requester APIs (list issued docs, fetch ﬁle/XML) [V] (S21); authorised issuer
+APIs
+simulated,
+watermarked
+T3Public portal lookup by oﬃcer Council/registry lookup the oﬃcer performs; result recorded with source, time, screenshothash real workﬂow, manual
+T4Cross-document / historical
+consistency Form ↔  PDF ↔  institutions_historical real
+T5 Physical EVC visit out of scope
+Feasibility matrix (ﬁll and keep updating; every "access basis" cell is [?] until conﬁrmed with the issuer/AICTE).
+Document Issuer Best tier today Access basis [?] Prototype Fallback
+Aﬃdavit-2 AICTE portal (generated) + notary/e-
+stamp T4 vs application record; T1 if DSC Own record real Manual
+Fire Safety Certiﬁcate State ﬁre department T1 if signed/QR; else T3/T4 Varies by state simulated Manual
+conﬁrm
+Occupancy/Completion Local authority T4 Varies simulated Manual
+Structural stability Competent authority/engineer T4 Varies simulated EVC
+Land documents State land records / registrar T2 where DigiLocker-integrated, elseT3/T4 Varies by state simulated Manual
+Architect certiﬁcate Council of Architecture T3 Public registry
+lookup simulated Manual
+Audited accounts Chartered Accountant (UDIN) T3 Public lookup simulated Manual
+TER receipt AICTE internal ledger T2 (internal) Own system simulated Manual
+Accreditation
+(NBA/NAAC) Accrediting body T3 Public lists simulated Manual
+Faculty degrees University/NAD/DigiLocker T2 with consent Consent ﬂow simulated Manual
+
+=== PDF PAGE 20 ===
+Every veriﬁcation result stores:source, method, tier, queried_at, response_sha256, result, status, simulated: bool, attempts. Simulated resultsrender with a persistent "SIMULATED SOURCE" watermark.
+Coverage panel. "For this application: 7 of 10 required documents are veriﬁable at T1/T2 in production today (3 simulated in this demo)."
+Consent-pull ﬂow (design). Applicant clicks Fetch from DigiLocker →  consent →  requester API returns issued document + integrity HMAC →  document enters
+the packet pre-marked T2. In the prototype this is a simulated adapter labelled as such.
+Effort S–M · Tier A.
+U-07 Disclosure Auditor — public-website three-way check
+What. AICTE mandates that institutions disclose, at a prominent place on their website: department-wise infrastructure with approved courses/intake; facultydetails (qualiﬁcation, tenure, experience) with Student:Faculty Ratio and Cadre Ratio; and audited ﬁnancial statements for the last three years [V] (S12, cited as
+Annexure-18). The Auditor fetches the institution's public disclosure pages and compares them with the application.
+Why it is unique. No competitor README shows a check against the public disclosures AICTE itself requires; v2.0.0 only receives website_* booleans from the
+form. This uses an open, legal data source — no restricted database needed (brief R17).
+Pipeline.
+1. Fetch (allow-listed domain from the application record; robots.txt respected; rate-limited; identifying user-agent; no login, no CAPTCHA bypass). Prototype
+default: local synthetic sites; live-fetch behind a ﬂag.
+2. Extract: presence of the three mandatory sections; faculty table (names, designation, qualiﬁcation); SFR/cadre statements; infrastructure table; links toaudited statements (FY labels); optional short-video presence.
+3. Evidence snapshot: URL, retrieval timestamp, HTML SHA-256, optional screenshot hash.
+4. Compare:
+Presence: items (i)–(iii) present? →  disclosure_warnings[] (advisory only).
+Three-way: website roster ↔  application roster (set difference + fuzzy name match) →  count of names missing on either side; website SFR ↔  computedSFR.
+Freshness: "last updated" cues; audited statements cover the last 3 FYs.
+5. Output to the Disclosure tab, never to eligibility ﬁndings (preserves your Annexure-18 separation).
+Guardrails. Public pages only; store derived facts + snapshot hash (not mirrored content); advisory wording; oﬃcer sees why a name did not match (fuzzy score).
+Acceptance tests. 20 synthetic sites with seeded gaps (missing section, stale year, roster mismatch, mismatching SFR) + compliant sites: report precision/recalland false-warning rate on compliant sites. A planted JS-rendered page must degrade to Manual Review, not to a warning.
+Effort M–L · Tier B.
+U-08 Reproducibility bundle (appeal-ready determinism)
+What. A downloadable bundle that lets anyone re-derive a ﬁnding:
+bundle_<inst>_<run>.zip  manifest.json      # run_id, cycle, as_of_date, evaluator_version (git sha / image digest), hashes, signature
+  facts.json         # normalised facts used (PII-minimised)  rules_resolved.json + provenance.json  findings.json  reproduce.py       # re-runs evaluate() offline and compares findings_sha256  README.md
+Why. Decisions can be appealed (Standing Hearing/Appellate Committees are named in your spec). "Same facts + same resolved rules + same evaluator ⇒
+same result" is something a statutory body can rely on. Partial overlap with Pramana's signed evidence pack (S3); your angle is executable reproducibility.
+Acceptance tests.reproduce.py exits 0 on the shipped bundle; ﬂipping one byte in facts.json or rules_resolved.json makes it exit non-zero and name the
+failing hash.
+Effort S–M (after U-01 and C-26) · Tier B.
+U-09 Floor-plan area reconciliation (+ unit sanity check)
+What. The brief explicitly includes ﬂoor plans among infrastructure evidence [V] (S1); an earlier AICTE approval-portal statement also asked for "digital dimensiontracking" [V] (S24). v2.0.0 has no ﬂoor-plan module.
+Pipeline (indicative, never conclusive).
+
+=== PDF PAGE 21 ===
+1. Classify plan sheet vs area-statement sheet.
+2. Extract room labels and areas from the PDF text layer (or OCR): Classroom 66.0 sq.m, Lab-3 72.5 m².
+3. Parse the carpet/built-up area statement table if present.
+4. Aggregate by category (instructional, administrative, amenities) — category deﬁnitions per the handbook appendix [?].
+5. Reconcile with the form's declared areas and institutions_historical.approved_built_up_sqm; compare minimum classroom/lab areas (66 sq.m inv2.0.0 [?]).
+6. Unit sanity check:1 sq.m = 10.7639 sq.ft. If a plan's totals divided by declared totals ≈ 10.76 (±3%), ﬂag "possible sq.ft/sq.m mix-up" — a common,
+explainable error.
+7. Optional CV: detect scale bar + closed polygons to estimate area; always labelled indicative.
+Acceptance tests. Synthetic plans (generated with area tables) with 3 seeded errors: unit mix-up, sub-minimum classroom, total below declared by > 10%. A planwith no parseable area statement →  Manual Review Required.
+Effort M · Tier B.
+U-10 Inter-oﬃcer consistency index
+What. The brief's expected outcomes include "more consistent application of conﬁgurable regulatory checklists" [V] (S1). Measure it.
+Maintain a gold set of ~20 seeded cases; periodically present them to oﬃcers (blinded).
+Compute agreement (Cohen's/Fleiss' κ) and per-rule override rate by region/oﬃcer.
+Dashboard highlights rules with high disagreement (usually ambiguous clauses or UI problems).
+Ethics/scope. Aggregate and rule-centred, not a performance ranking of individuals; document that in the UI. In the prototype, ship the metric deﬁnitions andsynthetic data only.
+Effort M · Tier C.
+U-11 Governed calibration queue
+What. Oﬃcers mark a ﬂag Conﬁrmed or False alarm. Labels go to a calibration queue. A weekly job proposes threshold/weight changes, back-tests them on alllabelled cases (shows effect on FAR and recall), and routes the proposal through U-02's maker-checker as an overlay.
+Contrast. CrashCoders' README says oﬃcer feedback immediately recalibrates scores (S4); ungoverned feedback can drift or be gamed. Here feedback never
+edits rules or thresholds directly.
+Effort S–M (reuses U-01/02) · Tier C.
+U-12 Safety panel — False-Accusation Rate, abstention, conﬁdence intervals
+What. A ﬁrst-class page (and slide) showing:
+FAR = share of clean/benign packets that receive an adverse status (Mismatch Detected or Expired where truly valid).
+Review burden = share of clean packets routed to Manual Review Required (workload cost of being careful).
+Abstention/coverage curve: accuracy vs share of cases auto-decided as the conﬁdence threshold moves.
+Per-signal precision/recall (ELA, font, QR, pHash/ORB, revision diff), including standalone ELA.
+Wilson 95% intervals on every rate; "rule of three" upper bound when zero events (≈ 3/n; e.g., 0 false accusations in 35 clean packets ⇒  FAR upper bound ≈
+8.6%).
+Worst-case list: the clean packets that came closest to an accusation.
+Why. Adverse regulatory action can harm institutions; a platform that measures its own harm is credible. Competitors report "0 false alarms" on their own
+generated sets (S3, S4) without intervals.
+Effort S · Tier A.
+4.3 Parity items (do these so you are not weaker than the strongest public repo)
+ID Item How Effort
+P-
+01
+Real DSC veriﬁcation against
+CCA India roots
+pyHanko with a trust store of oﬃcial CCA root/intermediate certiﬁcates (verify hashes of the ﬁles you
+download); optional OCSP/CRL; test on a real DSC-signed government PDF (e.g., e-Gazette); show "applicant'sown DSC ≠ issuer authentication" distinction (Pramana does, S3) M
+
+=== PDF PAGE 22 ===
+ID Item How Effort
+P-
+02PDF revision-level diff pikepdf to enumerate incremental updates; rebuild each revision; diff text/objects inside the value bbox;
+message: "value changed in revision 2: '30-06-2025' →  '30-06-2027'" M
+P-
+03
+Encryption at rest, authenticated
+page access, parser sandbox C-15 + C-18 M
+P-
+04
+Retention/purge + audit-chain
+anchoring C-16 + C-17 S–M
+P-
+05Extraction stack Text+layout classiﬁer with conﬁdence; rapidocr-onnxruntime + Tesseract (eng+hin+tam); optional localsmall-LLM fallback with schema-constrained output and found-on-page grounding (C-18); deterministic mode is
+default
+M
+P-
+06Cross-application linkage Shared PAN digest / certiﬁcate number / ﬁle hash / photo ﬁngerprint →  small graph view S–M
+P-07Tamper Demo Mode Clean vs tampered twin side-by-side (idea from CrashCoders, S4); one click S
+P-
+08
+Applicant readiness check +
+rectiﬁcation-scope check Pre-submission run; on re-upload ﬂag edits outside the requested deﬁciency scope S
+5. Speciﬁcation v2.1 deltas
+5.1 Architecture (changes marked ★ )
+                       STAGE 1  (once per upload; results cached)
+ Upload ─►  sandbox ★  ─►  ingest_extract ─►  doc_forensics ─►  infra_vision ─►  external_gateway ★ (tiers)             │               classifier ★       revision diff ★     floor_plan ★      simulated/real watermark ★             │               rapidocr/tess     DSC vs CCA roots ★  pHash+ORB             ▼                                                    disclosure_auditor ★  (public web)      encrypted store ★   ───────────────────────►   packet_facts (versioned, hashed)                                                         │
+                       STAGE 2  (pure function, ms)      ▼ rule_layers ★  (base + overlays) ─►  resolve(cycle) ★  ─►  evaluate(facts, stack, cycle, as_of)                                                         ├─►  findings (completeness ⟂  verification ★ )                                                         ├─►  remedy_solver ★   /  intake_planner ★                                                         ├─►  claim_coverage ★
+                                                         └─►  evaluation_run ★  (rules applied, records checked, hashes) Governance: draft ─►  impact simulator ★  ─►  maker-checker ★  ─►  signed layer ─►  audit chain + checkpoints ★ Human gate: state machine ★  (system actor cannot issue adverse outcomes) Outputs: dashboard · officer workbench · applicant portal · reproducibility bundle ★  · safety panel ★
+5.2 Repository tree additions
+backend/  security/{auth.py, crypto.py, sandbox.py, retention.py, audit_chain.py}      ★  rules/aph_2024_27/{index.json, base/2024-25/, overlays/}                     ★
+  modules/{rule_layers.py, impact.py, remedy_solver.py, intake_planner.py,           claim_coverage.py, disclosure_auditor.py, floor_plan.py,           verification_tiers.py, reproducibility.py, calibration.py}          ★  modules/doc_forensics/{structure.py, fonts.py, ela.py, qr.py, dsc.py}        (split for tests)  state_machine.py                                                            ★  tests/{unit/, property/, golden/, redteam/, security/}                       ★
+data_generator/  generate_synthetic_packets.py   # --quick / --full / --template-shift / --redteam ★  generate_synthetic_sites.py     # for U-07 ★  benchmark.py                    # prints measured vs target, CIs, FAR ★docs/{claims_register.md, verification_matrix.md, aph_verification_checklist.md}  ★
+Dockerfile, docker-compose.yml    # one-command, offline-capable ★
+5.3 Rule-pack layout and manifest
+// index.json
+{  "handbook": "AICTE_APH_2024_2027",
+
+=== PDF PAGE 23 ===
+  "layers": [    {"id": "BASE_2024_25", "kind": "BASE", "path": "base/2024-25", "applies_from_cycle": "2024-25", "status": "VERIFIED"},    {"id": "ADD_2025_26_POP", "kind": "ADDENDUM", "path": "overlays/addendum_2025_26_pop.json", "applies_from_cycle": "2025-26", 
+"status": "DRAFT"},    {"id": "ADD_2026_27_SUPERNUMERARY", "kind": "ADDENDUM", "path": "overlays/addendum_2026_27_supernumerary.json", "applies_from_cycle": "2026-27", "status": "DRAFT"}  ],  "default_cycle": "2026-27",
+  "source_pdf_hashes": {"APH_2024_27.pdf": "<sha256 of the file you used>", "ADDENDUM_2025_26.pdf": "<sha256>", "ADDENDUM_2026_27.pdf": "<sha256>"}}
+Remove the placeholder source_pdf_sha256 in v2.0.0 (e3b0c442…b855 is the SHA-256 of the empty string, so it identiﬁes no real PDF — replace with the realﬁle hash or leave null).
+5.4 Schema additions
+CREATE TABLE users (user_id INTEGER PRIMARY KEY, username TEXT UNIQUE NOT NULL, pw_hash TEXT NOT NULL,
+  role TEXT NOT NULL, region TEXT, is_active INTEGER DEFAULT 1, totp_secret_enc BLOB);
+CREATE TABLE documents (doc_id TEXT PRIMARY KEY, inst_id TEXT NOT NULL, slot TEXT NOT NULL, sha256 TEXT NOT NULL,  enc_alg TEXT NOT NULL, wrapped_dek BLOB NOT NULL, nonce BLOB NOT NULL, key_id TEXT NOT NULL,  uploaded_at TEXT NOT NULL, legal_hold INTEGER DEFAULT 0, purge_after DATE, purged_at TEXT);
+CREATE TABLE rule_layers (layer_id TEXT PRIMARY KEY, kind TEXT NOT NULL, applies_from_cycle TEXT NOT NULL,  applies_to_cycle TEXT, order_no INTEGER NOT NULL, status TEXT NOT NULL,   -- DRAFT|APPROVED|PUBLISHED  payload_json TEXT NOT NULL, payload_sha256 TEXT NOT NULL, maker TEXT, checker TEXT, signature TEXT, created_at TEXT);
+CREATE TABLE verification_results (vr_id INTEGER PRIMARY KEY, inst_id TEXT NOT NULL, requirement_id TEXT NOT NULL,  source TEXT NOT NULL, method TEXT NOT NULL, tier TEXT NOT NULL, queried_at TEXT NOT NULL, response_sha256 TEXT,  result_json TEXT, status TEXT NOT NULL, simulated INTEGER NOT NULL, attempts INTEGER DEFAULT 1);
+CREATE TABLE claims (claim_id TEXT PRIMARY KEY, inst_id TEXT NOT NULL, field TEXT NOT NULL, value TEXT NOT NULL,  weight REAL NOT NULL, evidence_level INTEGER NOT NULL, evidence_refs_json TEXT);
+CREATE TABLE disclosure_audits (audit_id INTEGER PRIMARY KEY, inst_id TEXT NOT NULL, url TEXT NOT NULL,  fetched_at TEXT NOT NULL, html_sha256 TEXT NOT NULL, findings_json TEXT NOT NULL);
+CREATE TABLE chain_checkpoints (log_id INTEGER PRIMARY KEY, head_hash TEXT NOT NULL, mac TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE TABLE calibration_proposals (proposal_id INTEGER PRIMARY KEY, created_at TEXT, change_json TEXT NOT NULL,  backtest_json TEXT NOT NULL, status TEXT NOT NULL, layer_id TEXT);
+Plus evaluation_runs (C-26) and the history tables (C-27). Add source_ref_verified column to any table caching rule metadata.
+5.5 API changes and additions
+# Method & route Roles Notes
+1′ POST /api/auth/login {username,password,totp?}Public Role from DB (C-13)
+4′ GET /api/applications/{id}/packetAll Adds claims, coverage_pct, verification_results
+(with tier/simulated); PAN shown as last-4 only
+6′ POST /api/applications/{id}/evaluate {cycle,
+as_of_date, what_if_overrides?}All Returns completeness ⟂  verification_status,
+rules_applied, ruleset_sha256
+8′ POST /api/applications/{id}/scrutiny-actionOﬃcers State-machine enforced (C-29)
+11′ POST /api/rules/publish Rules_AdminOnly for an approved draft (maker ≠ checker)
+13GET /api/rules/resolve?cycle=2026-27All Resolved rules + provenance + hash
+14POST /api/rules/drafts · POST
+/api/rules/drafts/{id}/approveRules_AdminMaker-checker
+15POST /api/rules/impact {draft_id, cycle}Rules_Admin, oﬃcers
+(read-only) Flip table
+16POST /api/applications/{id}/remediesOﬃcers, Applicant
+(own) Remedy options (U-03)
+
+=== PDF PAGE 24 ===
+# Method & route Roles Notes
+17POST /api/planner/intake Applicant Intake Planner (U-04)
+18POST /api/applications/{id}/disclosure-audit · GET
+…/disclosure-audit Oﬃcers U-07
+19GET /api/applications/{id}/reproducibility-bundle ·
+POST /api/reproduce Oﬃcers U-08
+20GET /api/verification-matrix All U-06 matrix + live coverage
+21 GET /api/safety/metrics Oﬃcers,
+Rules_AdminU-12
+22POST /api/calibration/proposals · …/{id}/approveRules_AdminU-11
+23GET /api/pages/{doc_id}/{n} Authorised Replaces public /static page images (C-15)
+5.6 UI additions
+Rule Lens popover + cycle slider (U-01).
+Impact Simulator screen with ﬂip table and maker-checker panel (U-02).
+Remedy panel under each deﬁciency; Intake Planner for applicants (U-03/04).
+Veriﬁcation Tier badge (T0–T5) and SIMULATED SOURCE watermark; Veriﬁcation Coverage card (U-06).
+Disclosure tab (U-07) separate from eligibility.
+Claims & Coverage view with Inspection Focus list (U-05).
+Safety panel (U-12), Reproduce button (U-08).
+Tamper Demo Mode toggle (P-07); EN/HI language toggle (cheap).
+Keep a single, calm oﬃcer path: Queue →  Application →  Findings →  Evidence →  Action. Everything above is reachable from there; do not add more top-level
+tabs.
+5.7 requirements.txt v2.1 (indicative; pin versions you test)
+fastapi, uvicorn[standard], pydantic>=2, argon2-cffi, pyjwt, cryptography, python-multipartpypdfium2, pdfplumber, pikepdf, pypdf, pyhanko, pyhanko-certvalidatorpillow, opencv-python-headless, zxing-cpp, imagehash, numpyrapidocr-onnxruntime, pytesseract, onnxruntime
+rapidfuzz, python-dateutil, jsonpointer, jsonschemahttpx, selectolaxreportlab, qrcodepytest, hypothesis
+(System packages in the Docker image: tesseract-ocr tesseract-ocr-hin tesseract-ocr-tam ffmpeg.)
+6. Corrected evaluation protocol — how to show measured results honestly
+6.1 Principles
+1. Targets are not results. Show Target | Measured | 95% CI | n side by side.
+2. "Held-out" must mean something. Different generator seeds and layout families the extractor never saw during development.
+3. Hard negatives are ﬁrst-class. A system that never accuses a genuine applicant is the credible one.
+4. Intervals everywhere. With 15 positives and 35 negatives, point estimates alone mislead.
+5. No tuning on the test set. Freeze code/thresholds at a tagged commit before the test run.
+6. Publish the generator and seeds so anyone can rerun (make eval SEED=…).
+7. Say plainly that data is synthetic. The brief requires authorized/anonymized/synthetic data [V] (S1); claim generalisation only as far as you tested it.
+6.2 Dataset design
+Split Content Purpose
+Dev (15+ packets) Layout families L1–L3, seeds 1–100 Calibrate thresholds
+(pHash/ORB, ELA, font)
+
+=== PDF PAGE 25 ===
+Split Content Purpose
+Test (50+ packets; increase
+to 300+ since generation ischeap)
+L1–L3 with new seeds + L4–L5 unseen families (different fonts, margins, header wording); ≥ 20%
+scanned branch with skew/noise/JPEG q 40–80 Headline numbers
+Hard negatives (≥ 10,inside test)
+CamScanner/iLovePDF scans; missing EXIF; legitimate relaxation (≤ 50% admissions); valid structural cert
+on a 33-year-old building; exact 30-year and exact 5-year anniversaries (C-21); Devanagari font fallback;
+QR with a different but legitimate URL structure; same-Trust shared stock photo
+Measure falseaccusations
+Red-team (Section 6.5) One packet per attack class Coverage matrix, not ascore
+Multilingual ≥ 10 pages Hindi/Tamil labelled documents OCR accuracy by script
+Real-document sanity Government-published, openly available DSC-signed PDFs (e.g., e-Gazette) for signature veriﬁcation; donot commit real institution certiﬁcates. Use public EoA letters only locally to test ﬁeld patterns
+Shows the pipeline does
+not only work on your
+generator
+6.3 The eight metrics (the brief's list, [V] S1)
+# Metric Unit Deﬁnition CI method
+1 Document-
+extraction accuracy ﬁeld Exact match after normalisation; report digital / scanned / Hindi / Tamil separately;
+micro-average + per-ﬁeld table
+Cluster bootstrap by
+packet
+2Validation accuracy requirement +
+packet Agreement with ground truth per requirement and packet exact-match Wilson (requirement),
+bootstrap (packet)
+3Anomaly-detection
+performance
+packet and
+document
+Precision / recall / F1; per-signal results (ELA, font, QR, revision diff, pHash/ORB); FAR
+and review burden on clean packets Wilson
+4Successful source-
+veriﬁcation rate adapter × mode Status-mapping accuracy under fault injection: 6 adapters × 6 modes (normal,
+mismatch, expired, timeout, server_down, inconclusive) →  expected status
+matrix (36 cells); plus unhandled-exception count (must be 0) and p95 latency
+Exact count
+5
+Discrepancy-
+identiﬁcation
+reliability
+injected
+discrepancy
+Detected and localised: bbox IoU ≥ 0.5 with ground-truth region and correct evidence
+cited Wilson
+6Average veriﬁcation
+time seconds/packet Stage 1 and Stage 2 separately; median, p95; hardware stated; cold vs warm;
+pages/packet Report n, IQR
+7a Alert timeliness ms Evaluation-complete →  alert visible; p95; plus alert correctness (no alerts on clean
+packets) Report n
+7b Reduction inmanual effort % Measured time-and-motion (6.6), with accuracy recorded alongside Paired test
+6.4 What the numbers in v2.0.0 would look like with honest intervals
+Computed with Wilson 95% intervals (z = 1.96):
+v2.0.0 "target" Counts Point estimate 95% CI
+Recall 100% 15/15 100% 79.6% – 100%
+Precision 93.8% 15/16 93.8% 71.7% – 98.9%
+Validation accuracy 98.0% 49/50 98.0% 89.5% – 99.7%
+Discrepancy reliability 97.8% 44/45 97.8% 88.4% – 99.6%
+FAR with 0 false accusations 0/35 0% upper bound 9.9% (Wilson); ≈ 8.6% (rule of three, 3/n)
+What to say. "No misses observed on 15 sabotaged packets (95% CI 79.6–100%); with the test set generator we can scale to 300+ packets to tighten this." That isstronger than an unqualiﬁed "100%".
+6.5 Red-team coverage matrix (publish it, including blind spots)
+
+=== PDF PAGE 26 ===
+ID Attack Primary detector Expected status Honest blind spot
+A1 Later-revision text overlay on a date Revision diff (P-02) Manual Review (Medium) →  Mismatch if
+corroborated by QR/source Edit done before ﬁrst save
+A2White box / cover rectangle over a
+value
+Structure + text-layer vs render
+disagreement Manual Review Flattened image PDFs
+A3Font swap on a value Font check (C-24) Manual Review Same font available
+A4Raster splice on scanned doc ELA (supporting only) Manual Review Clean re-scan
+A5QR regenerated with a self-consistent payload Needs issuer signature orsource check Veriﬁcation Pending / T2 check Undetectable without issueranchor
+A6Whole PDF regenerated from Word No issuer authentication present Veriﬁcation Pending (no T1/T2) Content-level forgery with
+plausible data
+A7 Print →  scan laundering Hygiene (Low) + missing issuer
+signal Manual Review Alterations before printing
+A8 Photo of a printout Same as A7 Manual Review Same
+A9 Lab photo reused, cropped, banner
+added (cross-Trust) pHash + ORB/RANSAC Mismatch (High) Heavy re-shoot of same
+room
+A10EXIF stripped / spoofed GPS EXIF check Manual Review (stripped); spoofed = blind Spoof within geofence
+A11DSC stripped from issuer document Expected-signature absence Manual Review / Veriﬁcation Pending Documents that never had aDSC
+A12Certiﬁcate copied from another
+institution Cross-application linkage Mismatch (High) First-time reuse across years
+not in DB
+A13Date re-typeset with no trace Cross-document + historical +
+source
+Manual Review / Mismatch if a record
+contradicts
+Consistent forgery across all
+docs
+A14Survey number differs form vs deed
+vs plan 3-way reconciliation Mismatch Same error replicated
+everywhere
+A15Aﬃdavit says "uploaded" but
+document missing Aﬃdavit-vs-packet check Completeness: MISSING —
+A16Planted instruction text in document(if LLM used) Grounding check Ignored (0 followed) Novel injection styles
+State openly that A5/A6 require issuer-side anchoring (T1/T2). That is exactly why U-06 exists.
+6.6 Time-and-motion protocol for metric 7b
+1. Recruit volunteers; disclose that they are not AICTE oﬃcers unless you can recruit real ones (external-validity limit).
+2. Same 10 packets per participant; counter-balanced order (manual-ﬁrst vs assisted-ﬁrst).
+3. Manual = checklist + PDF viewer; assisted = platform.
+4. Record time and correctness (a fast wrong decision is not a saving).
+5. Report median and IQR of time per packet; paired Wilcoxon signed-rank; present as "estimated reduction in this study" with n.
+6. Keep the old "18 min vs 2.5 min" as an assumption label only if you cannot run the study.
+6.7 Timing methodology (metric 6)
+time.perf_counter() around Stage 1 and Stage 2 separately; 3 warm-up runs; n ≥ 50 packets; stated CPU/RAM; no GPU; report median/p95; run evaluate()
+1,000× on cached facts for the "ms" claim; separate digital-native from OCR-heavy packets.
+6.8 Ablations (shows where value comes from)
+Rules only →  + cross-document reconciliation →  + forensics →  + external veriﬁcation. Report FAR and recall at each step. This answers "do you need the heavy
+CV/forensics?" with data.
+6.9 Reporting template (paste into benchmark_report.md)
+
+=== PDF PAGE 27 ===
+Metric Target Measured 95% CI n Notes
+1 Extraction accuracy digital / scanned / HI / TA
+2 Validation accuracy
+3 Anomaly P / R / F1 per-signal table below
+3 FAR / Review burden clean + hard negatives
+4 Source-veriﬁcation status mapping 36 cells 0 unhandled exceptions
+5 Discrepancy reliability IoU ≥ 0.5
+6 Time (Stage 1 / Stage 2) hardware
+7a Alert timeliness
+7b Effort reduction time-and-motion study
+7. Showing uniqueness
+7.1 Positioning statements
+15 seconds. "Other tools ﬂag problems. We version the rulebook itself, show who is affected before a rule goes live, and tell oﬃcers and institutions exactly whatwould ﬁx each deﬁciency — with veriﬁcation tiers that never pretend to access databases we don't have."
+60 seconds.
+1. Problem: AICTE's portal checks self-disclosed data; document authenticity, cross-institution reuse and the public disclosures institutions must publish arechecked manually. The handbook also changes every year through addenda.
+2. Solution: A decision-support platform that validates applications against a layered, cited rule stack; authenticates documents with calibrated, corroboratedsignals; veriﬁes at the issuer where legally possible and says clearly where not; and keeps every decision with the human oﬃcer.
+3. What's different: layered rule packs with impact simulation; remediation options; honest veriﬁcation tiers; a public-disclosure audit; measured false-
+accusation rate.
+4. Proof: live demo with a tampered twin, a benign scan that is not accused, a cycle slider that ﬂips a ﬁnding, and a reproducibility bundle that re-derives thedecision.
+7.2 Uniqueness proof table (claim →  evidence →  where to see it)
+Claim Evidence artefact Demo moment
+The rulebook changes mid-cycle and we
+model it
+Overlay ﬁles + provenance map +
+ruleset_sha256 Cycle slider ﬂips PoP ﬁnding (U-01)
+We show the blast radius of a rule change Impact ﬂip table; maker-checker audit rows Draft overlay →  3 ﬂips →  second admin approves (U-02)
+We tell you how to ﬁx it Remedy options; closure test in CI Apply option (c) →  re-evaluate →  clear (U-03)
+We never claim access we don't have Veriﬁcation matrix + SIMULATED watermark Tier badges, coverage card (U-06)
+We don't falsely accuse Safety panel with CIs; hard-negative set Benign CamScanner PDF →  Manual Review, not Mismatch (U-
+12)
+We check what institutions must publish Disclosure audit snapshot + comparison Roster mismatch with website (U-07)
+Decisions are reproducible for appeals Bundle + reproduce.py Flip one byte →  failure (U-08)
+Security isn't an afterthought Encrypted blobs, server-side roles, sandbox,
+retention Show 403 on role forgery; purge tombstone
+7.3 Idea-deck plan (adapt to the oﬃcial SIH template — I have not seen it)
+# Slide Content
+1Problem and evidence Self-disclosure-based checks; ghost faculty (Anna University reportedly found ~2,000 faculty positions wrongly ﬁlled in 2024-25 [R],
+S20); handbook changes via addenda [V/R]
+
+=== PDF PAGE 28 ===
+# Slide Content
+2Solution at a glance 3-sentence description + safeguards (advisory only, human gate, no restricted DB)
+3Architecture Two-stage (extract once →  pure-function evaluation) + governance layer (U-01/02)
+4What is different U-01, U-02, U-03 with one visual each
+5Trust model Veriﬁcation tiers + calibrated, corroborated forensics + SIMULATED watermark
+6Evaluation plan The eight metrics, FAR, CIs, red-team matrix
+7Feasibility, integration,
+security Adapter contract, SSO placeholder, encryption, retention, licences
+8Impact and roadmap Oﬃcer workload, institution self-service, rollout path
+7.4 Five-minute demo script
+Time Beat What the judge sees
+0:00Safeguard banner; one-line problem "Decision support — not decision maker."
+0:30Tamper Demo Mode (P-07): clean vs tampered
+twin
+Fire NOC visible expiry ≠ QR payload →  Medium + High corroboration →  Mismatch Detected with
+bounding boxes
+1:15Benign scan CamScanner PDF, no EXIF →  Low chip + Manual Review, not accused; point to Safety panel FAR
+1:45Cadre deﬁciency with Rule Lens Hover threshold →  base vs overlay vs resolved, clause anchor, verified chip
+2:15Remedies Three options; apply (c); re-evaluate →  deﬁciency cleared
+3:00Cycle slider PoP 11/60 ﬂips 2024-25 ↔  2025-26
+3:30Impact simulator + maker-checker Draft overlay →  ﬂip table →  second admin approves; self-approve attempt blocked
+4:15Veriﬁcation matrix and Disclosure Auditor Tier badges; "3 faculty names on website not in application"
+4:45Reproducibility + Safety panel reproduce.py passes; ﬂip a byte →  fails; CIs on screen
+Fallbacks. Pre-recorded video of the whole ﬂow; seeded DB; docker compose up works oﬄine; screenshots of each beat.
+7.5 Likely jury questions and answers
+# Question Answer (short)
+1 "Similar tools already exist."
+Yes — several public prototypes target this PS. Ours differs in governing the rulebook (layered addenda, impact simulation,
+maker-checker), quantiﬁed remediation, honest veriﬁcation tiers and a measured false-accusation rate. We adopted the parity
+items that matter (DSC veriﬁcation, revision diff, encryption).
+2"Where is the AI?" OCR/classiﬁcation, near-duplicate image matching, optional grounded local LLM extraction, calibrated anomaly scoring. Final
+compliance decisions are deterministic and explainable by design (R19/R20).
+3"Does it call real government
+registries?"
+Not in the prototype — adapters are simulated and watermarked. The matrix shows the production path per document (oﬄine-
+veriﬁable signals, DigiLocker consent-pull, public lookups). We do not assume restricted databases (brief R17).
+4"What when the handbook
+changes?"
+Publish an overlay; the impact simulator shows who ﬂips; a second approver signs it; old decisions remain reproducible with the
+old stack.
+5 "How do you avoid accusing
+genuine applicants?"
+Corroboration rule, calibrated severity, benign-explanation display, abstention to manual review, and we publish FAR with
+intervals.
+6"Is data safe?" Server-side roles, envelope encryption, sandboxed parsing, retention with audited purge, no raw government IDs, hash-chained
+audit with external anchoring.
+7 "How does it integrate withthe AICTE portal?" Stateless evaluator + REST API + adapter contract; SSO placeholder; reads institutional records through authorised interfaces;PostgreSQL path.
+8 "Your data is synthetic." By the brief's own rules; we use template-shift splits, hard negatives, a red-team matrix with blind spots, plus real DSC-signed
+government PDFs for signature checks. Intervals reﬂect sample size.
+
+=== PDF PAGE 29 ===
+# Question Answer (short)
+9 "Why not just use an LLM?" Regulatory outcomes need determinism, citations and reproducibility; LLMs are optional for ﬁeld extraction only, with found-on-
+page grounding.
+10"Does it scale?" Evaluation is pure and cacheable; Stage 1 runs once per upload in a queue; SQLite →  PostgreSQL; measured throughput
+reported.
+11"Can institutions game the
+planner?" The planner uses the same rules and doesn't bypass evidence checks; claim coverage and veriﬁcation tiers still apply.
+12"How do you know your rulesare right?" Every rule carries a clause anchor and a verified ﬂag; unveriﬁed rules route to Manual Review, never to deﬁciencies; changesgo through maker-checker.
+13"What about regional
+languages?" Hindi/Tamil OCR with conﬁdence gating; low conﬁdence routes to oﬃcers.
+14"What does 'reduced manual
+effort' rest on?" A time-and-motion study with stated limits; until run, we label it an assumption.
+15"What can't you detect?" Self-consistent forgeries without an issuer anchor (A5/A6); we say so and route to Veriﬁcation Pending.
+16
+"Why separate website
+disclosure issues from
+eligibility?"
+They are different regulatory consequences; advisory warnings must not drive a deﬁciency letter.
+7.6 Claims register (keep in docs/claims_register.md; review before every presentation)
+Topic Allowed phrasing Not allowed
+Registry access "Simulated adapters; production path via DigiLocker/authorised APIs" "Live government API integration"
+Accuracy "Measured on N synthetic packets: X% (95% CI a–b)" "100% accurate", "0 false alarms" without n and CI
+Time saved "Estimated Y% in a time-and-motion study with n volunteers" A ﬁgure with no method
+Blockchain "Hash-chained, tamper-evident log with external checkpoints" "Immutable consortium blockchain" unless it is one
+Rules "Cited; verified where checked against the PDF" Page numbers you haven't checked
+Fraud "Preliminary indicator requiring human veriﬁcation" "Forgery detected"
+ML models Name the actual model and licence Invented or ﬁne-tuned model names
+Regulation changes "Rule stack supports addenda; sample overlays marked unveriﬁed" Presenting unveriﬁed addendum content as AICTE text
+8. Build plan, priorities, cut list, risks
+Effort units are [A] rough estimates for a small team (S ≤ 0.5 day, M ≈ 1–2 days, L ≥ 3 days, per person). Adjust to your team size. The ﬁnale date is not known to
+me; the plan is expressed in phases.
+8.1 Phase 0 — before idea submission (reported deadline 28 Oct 2026; conﬁrm)
+Task Done when
+Replace unveriﬁed numbers/page refs with [?]/null (Section 9.2) No unchecked citation in the deck
+Fix the six credibility items: C-01, C-02, C-21, C-13, C-14, C-28 Each ﬁx written into the deck's spec slide
+Add U-01, U-02, U-03, U-06, U-12 to the idea (not the code) Slides 3–6 of 7.3
+Draft the Claims Register (7.6) One page, reviewed by the whole team
+8.2 Phase 1 — core platform (≈ 7 working days)
+ID Task Effort Depends
+B-01 Schema v2.1 (users, documents, rule_layers, evaluation_runs, history tables), audit chain + checkpoints M —
+
+=== PDF PAGE 30 ===
+ID Task Effort Depends
+B-02Auth: argon2id, server-side roles, JWT, RBAC dependencies, object-level checks M B-01
+B-03Encrypted document store + authenticated page endpoint + sandboxed parsing M–L B-01
+B-04Rule layers: index.json, base + 2 sample overlays, resolver, schema validation M B-01
+B-05 evaluate(facts, stack, cycle, as_of) with C-02, C-05, C-09, C-21, C-22 L B-04
+B-06Ingest: classiﬁer, digital/scanned branch, ﬁeld extraction + bbox L B-03
+B-07 Forensics: QR vs text, font check, ELA (supporting), revision diff (P-02) L B-06
+B-08 Veriﬁcation adapters with tiers, fault modes, SIMULATED watermark (U-06) M B-01
+B-09 State machine for oﬃcer actions (C-29) M B-02
+B-10 Synthetic generator with template shift + hard negatives + red-team packets L —
+B-11 Benchmark script with CIs, FAR, per-signal metrics M B-05, B-07, B-10
+8.3 Phase 2 — differentiators (≈ 7 working days)
+ID Task Effort Tier
+D-01 Impact simulator + maker-checker + signed publish (U-02) M A
+D-02 Remedy solver + closure tests (U-03) M A
+D-03 Safety panel (U-12) S A
+D-04 Rule Lens + cycle slider UI (U-01) M A
+D-05 Intake Planner (U-04) M B
+D-06 Disclosure Auditor on synthetic sites (U-07) M–L B
+D-07 Claim coverage + inspection focus (U-05) M B
+D-08 Reproducibility bundle (U-08) S–M B
+D-09 Floor-plan reconciliation (U-09) M B
+D-10 DSC veriﬁcation against CCA roots on a real signed PDF (P-01) M parity
+8.4 Phase 3 — hardening, evaluation, demo (≈ 5 working days)
+Run the benchmark at a frozen commit; write benchmark_report.md (6.9); time-and-motion study (6.6) if possible; security tests (role forgery, path traversal,oversized upload, bomb image, injection text); one-command Docker run on a clean machine; rehearse the 5-minute demo (7.4) twice, record a backup video.
+8.5 Cut list (drop in this order if time runs out)
+1. U-10 consistency index (describe only).
+2. U-11 calibration queue (describe only).
+3. U-09 ﬂoor-plan CV (keep text-table parsing and unit sanity check only).
+4. YOLO workstation counting (advisory; AGPL issue) — keep pHash/ORB and EXIF only.
+5. U-07 live fetch (keep synthetic-site mode).
+6. EVC video-duration check (cheap, but clause [?]).
+7. SLA/undertaking tracker (overlaps PS 26262).
+Never cut: server-side roles, encrypted storage, corroboration rule, completeness ⟂  veriﬁcation split, cycle-aware rule resolution, FAR reporting, human-gate statemachine, claims register.
+8.6 Risk register
+Risk Likelihood Impact Mitigation
+A cited norm/page is wrong in front of a judge Medium High verified ﬂags; unveriﬁed →  Manual Review; checklist 9.2 completed
+
+=== PDF PAGE 31 ===
+Risk Likelihood Impact Mitigation
+Pramana-level forensics depth expected High Medium Parity items P-01/P-02; lead with governance + remediation + honesty
+Over-scope; nothing works end-to-end High High Phases and cut list; demo script drives priority
+OCR/regex brittle on unseen layouts Medium Medium Template-shift tests; conﬁdence gating; optional grounded LLM
+False accusations on benign scans Medium High Corroboration rule; hard negatives; FAR reporting
+Legal doubt about using public websites (U-07) Low Medium Public pages only, robots.txt, advisory output, synthetic mode default
+Licence challenge (AGPL) Medium Medium C-19 replacements; licence table 9.3
+Demo fails live Medium High Oﬄine Docker, seeded data, backup video
+Simulated sources mistaken for real Medium High Persistent watermark; matrix; claims register
+Aadhaar-derived data handling concerns Low High Do not persist Aadhaar-derived values; legal review [?]
+8.7 Deﬁnition of done (acceptance checklist)
+[ ] docker compose up runs the full demo oﬄine on a clean machine.
+[ ] Role forgery attempt returns 403; Applicant cannot see another institution.
+[ ] Page images require authentication.
+[ ] evaluate() is pure; 1,000 runs timed and reported.
+[ ] Golden tests for C-01, C-02, C-21 pass; property tests pass.
+[ ] Closure tests for remedies and planner pass.
+[ ] Maker ≠ checker enforced; published layers immutable.
+[ ] benchmark_report.md shows target vs measured with CIs, FAR, per-signal metrics.
+[ ] Red-team matrix published with blind spots.
+[ ] Reproducibility bundle veriﬁes; tampering fails.
+[ ] Claims Register reviewed; every [?] either resolved or visibly ﬂagged.
+9. Appendices
+9.1 Sources and reliability
+ID Source URL Used for Reliability
+S1
+Oﬃcial PS
+26261 brief
+(mirror of
+sih.gov.inlisting)
+https://zaidsayyed.in/tools/sih-problem-statements/sih26261
+Requirements,metrics,
+safeguards, six
+statuses
+High for
+brief text
+(mirror);
+conﬁrm onsih.gov.in
+S2
+SIH 2026
+problem-
+statement
+index (mirror)
+https://zaidsayyed.in/tools/sih-problem-statements Idea counts,deadline, PS
+26262 scope
+Medium
+(unoﬃcial)
+S3Pramana
+README https://github.com/Anexus5919/pramana
+Competitor
+features and
+reported
+results
+README-
+level
+S4CrashCodersREADME https://github.com/viraj-1709/aicte Competitorfeatures README-level
+S5 SmartValidateREADME https://github.com/sathvik210508/AI-Powered-Application-Validation-Document-Authentication-Regulatory-Compliance-Platform
+Competitor
+features,
+scope table
+README-level
+S6SIH11 repo https://github.com/sohamramshette/SIH11 Competitorfeatures README-level
+
+=== PDF PAGE 32 ===
+ID Source URL Used for Reliability
+S7 CipherCore
+Verify demo https://nonutsayan.github.io/CipherCore-verify/ Competitor
+claims Demo page
+S8
+VTU
+minimum-
+norms
+regulations
+reproducingAICTE faculty
+norms
+https://www.ksit.ac.in/img/staff-list-2024-2025.pdf
+FSR, cadreformulas,
+relaxation,
+1:3:10
+Medium-High
+(faithful
+copy)
+S9
+APH
+Appendix-7
+copy
+https://naac.skit.ac.in/AQAR-2023-24/Extended_Proﬁle/3.2/AICTE_APH_Appendix-7.pdf FSR tables Medium-
+High
+S10
+APH 2018-19
+Appendix-7
+copy
+https://diet.ac.in/wp-content/uploads/extended%20proﬁles/APH-18-19.pdf
+Diploma
+formula (older
+edition)
+Medium
+(older
+handbook)
+S11
+AICTE portal
+documentlists (Chapter-
+1 categories)
+https://aicte.gov.in/sites/default/ﬁles/New%20Institutes%20&%20Existing%20Institutes%20(Chapter-1%20Categories).pdf
+Document list
+incl. 30-yearstability
+certiﬁcate
+High(aicte.gov.in)
+S12
+AICTE EoA
+2026-27 letter
+(SPJIMRcopy)
+https://www.spjimr.org/wp-content/uploads/2026/06/aicte-approval-letter-2026-2027.pdf
+Annexure-18 at
+page 180;
+mandatorydisclosures
+High (AICTE-
+generated)
+S13
+News on
+2025-26
+addendum
+(adjunctremoved, PoP
+20%)
+https://edunovations.com/aicte-allows-20-faculty-at-technical-institutes-to-be-persons-from-industry/amp/ ;
+https://news.careers360.com/professor-of-practice-ugc-15000-university-80-iit-college-vacancy-appointments-
+jobs-aicte-guidelines-education-ministry
+PoP/adjunct
+change
+Medium
+(secondary)
+S14
+News on
+2026-27
+addendum
+https://news.careers360.com/aicte-approval-process-handbook-2026-27-update-engineering-college-business-
+school-management-foreign-student-seats-minor-diploma/amp
+Supernumerary
+25%, nil-
+deﬁciency self-disclosure
+Medium
+(secondary)
+S15
+APH 2024-27
+adjunct/PoP
+text (VESITcopy)
+https://cdn.vesit.ves.ac.in/assets/ﬁles/126663/aicte_ugc_guidelines_for_engaging_of_professor_of_practice.pdf Original 15%
+wording
+Medium
+(partial text)
+S16AICTEAﬃdavit
+sample
+https://old.gcoej.ac.in/download/AICTE%20Aﬃdavit%201-46226522477%20EOA%202025-260.pdf
+Portal-
+generated
+aﬃdavit
+structure
+Medium-
+High
+S17
+APH 2024-27
+launchcoverage
+https://news.careers360.com/aicte-launches-new-approval-handbook-removes-cap-intake-top-engineering-
+colleges-nirf-bba-bca-guidelines/amp
+Three-year
+handbook;
+BBA/BCA/BMS
+scope
+Medium
+S18
+Lok Sabhareply (e-
+governance
+since 2010)
+https://eparlib.nic.in/bitstream/123456789/587954/1/91870.pdf
+AICTE e-
+governance
+history
+High
+S19
+AICTE EoA
+letter (self-disclosure
+deﬁciency)
+https://igdtuw.ac.in/NAAC/Single-IMS/AICTE_Approval.PDF
+Self-
+disclosure-
+based reports
+High
+
+=== PDF PAGE 33 ===
+ID Source URL Used for Reliability
+S20
+Aadhaar
+authenticationfor AICTE
+institutions
+https://www.tribuneindia.com/news/india/aadhaar-use-okayed-in-tech-institutions/amp
+Ghost faculty
+context;
+voluntary use
+Medium
+S21
+DigiLocker
+requester API
+spec;explainer
+https://cf-media.api-setu.in/resources/Requester-APISpeciﬁcation-V1_12.pdf ; https://didit.me/blog/digilocker-
+api/
+Consent-pull
+path
+High (spec)
+/ Medium
+(explainer)
+S22
+DU plans AI
+veriﬁcation
+tool
+https://theprint.in/india/du-plans-to-develop-ai-based-veriﬁcation-tool-after-detecting-manipulated-documents-in-admissions/2991453/ Demand signal Medium
+S23
+Generic AIdocument-
+veriﬁcation
+vendor
+example
+https://www.eklavvya.com/assessment-video-library/automate-document-veriﬁcation-process/ Non-AICTE
+alternatives
+Low-
+Medium
+S24
+Earlier AICTEapproval-
+portal PS on
+sih.gov.in
+https://www.sih.gov.in/sih2019ProblemStatementstudentInnovation
+Dimensiontracking,
+evaluator
+matching
+High
+(portal), year
+unclear
+S25
+AICTE
+ApprovalProcess
+2025-26 page
+(links
+addendum)
+https://www.aicte-india.org/bureaus/approval/approval-process-2025-26 Addendum
+existence High
+S26
+APH 2024-27text via
+document
+host
+https://www.studocu.com/in/document/sant-gadge-baba-amravati-university/software-engineering/approval-
+process-handbook-2024-25-to-2026-27/80825336
+Aﬃdavit-2
+sworn-before
+text
+Low-Medium
+(third-party
+host)
+S27
+Public notice
+for ApprovalProcess
+2026-27
+https://dteapengg.in/Documents/NOTIFICATIONS/AICTE%20Approval%20Process%202026-
+27_Fair%20Copy%20and%20Public%20notice%20for%20approval%20process%202026-
+27%20Merged_20251201_044937.pdf
+Portal timeline;
+"amendmentsissued from
+time to time"
+High
+9.2 APH veriﬁcation checklist (do this before the deck is ﬁnal)
+Open the APH 2024-27 PDF, the 2025-26 addendum, and the 2026-27 addendum. For each item record: clause, exact wording anchor, page, PDF SHA-256, your
+initials. Until done, keep the item verified:false.
+# Item Where in your spec Status
+V-01 Annexure-18 clause list and page (letter cites p. 180) WEBSITE_DISCLOSURES_ANNEX_18☐
+V-02Annexure-14 competent ﬁre authorities (all states) FIRE_AND_OCCUPANCY_ELIGIBILITY☐
+V-03Annexure-1 / Annexure-2 document lists, clause numbers, pages CATEGORY_CHECKLIST_SCOPE☐
+V-04Structural stability: issuer wording, 5-year validity, Government >50 yrs exception STRUCTURAL_STABILITY_TRIGGER☐
+V-05Aﬃdavit-2: stamp amount, sworn-before list AFFIDAVIT_2_DSC_AND_STAMP☐
+V-06UG Computer Applications / Management FSR; PG Design / Applied Arts / HMCT FSR rules.json Annexure-5 ☐
+V-07Cadre ratios by stream; Planning/Architecture special rules C-03 ☐
+V-08Low-enrollment relaxation scope (which programmes) C-05 ☐
+V-09Faculty-deﬁciency (10%) and area-deﬁciency (10%) thresholds and consequences structural_thresholds☐
+V-10Adjunct/PoP: base text, 2025-26 changes, 2026-27 changes, stream scope C-01 ☐
+
+=== PDF PAGE 34 ===
+# Item Where in your spec Status
+V-11 Annexure-4: PCs per department, PC:student ratio table, printers, A1 plotter, bandwidth tiers C-11 ☐
+V-12Page numbers for every source_ref C-06 ☐
+V-13EVC 30-min walkthrough clause; website 1–2 min video clause EVC_30MIN_WALKTHROUGH_VIDEO☐
+V-14MoU disclosure clause (18.18) and ABC applicability (18.15.xvii) Annex-18 rules ☐
+V-15Minimum classroom/lab area (66 sq.m) structural_thresholds☐
+V-16TER deﬁnition and payment-veriﬁcation path Bharatkosh_TER adapter ☐
+V-17Which categories route to EVC workflow_routing ☐
+V-18Supernumerary seats (25%) and "nil deﬁciency on self-disclosure" text U-01 sample overlay ☐
+V-19Rounding practice for faculty computation (ask or infer from past LoDs) C-02 ☐
+V-20Deﬁnition of S for multi-shift / multi-year programmes C-02 ☐
+V-21 Diploma formula in 2024-27 C-04 ☐
+V-22Document validity rules (e.g., ﬁre NOC validity vs academic session) FIRE_AND_OCCUPANCY_ELIGIBILITY☐
+V-23UDIN format; SHCIL veriﬁcation mechanics (for adapter realism) adapters ☐
+9.3 Licence decisions (conﬁrm each on the project's own page)
+Component Licence (to conﬁrm) Decision
+pyHanko MIT Use
+pikepdf MPL-2.0 Use
+pdfplumber / pdfminer.six MIT Use
+pypdﬁum2 Apache-2.0 / BSD-3 Use
+pypdf BSD-3 Use
+OpenCV (opencv-python-headless) Apache-2.0 Use
+zxing-cpp Apache-2.0 Use
+imagehash BSD-2 Use
+rapidocr-onnxruntime Apache-2.0 Use
+Tesseract Apache-2.0 Use
+onnxruntime MIT Use
+FastAPI / Pydantic MIT Use
+argon2-cﬃ, cryptography MIT / Apache-2.0 + BSD Use
+rapidfuzz, selectolax MIT Use
+reportlab, qrcode BSD Use
+PyMuPDF AGPL-3.0 or commercial Avoid
+Ultralytics YOLOv8 AGPL-3.0 or enterprise Avoid; use Apache-licensed weights via ONNX
+9.4 Test vectors (put these in tests/golden/)
+ID Input Expected
+T-01 older_than(1996-01-01, 2026-01-01, 30)False (exactly 30 years)
+
+=== PDF PAGE 35 ===
+ID Input Expected
+T-02older_than(1996-01-01, 2026-01-02, 30)True
+T-03 valid_for_years(2020-01-01, 2025-01-01, 5)Boundary policy decides; near_boundary == True →  Manual Review
+T-04 ug_cadre(S=1080, fsr=20) total 54; professor cadre 6 (5 + Principal); associate 12; assistant 36
+T-05 ug_cadre(S=1080, fsr=20, relax=True)total 41; 5 / 9 / 27
+T-06 max_intake_supported((4,10,30), fsr=20)720
+T-07 max_intake_supported((6,10,30), fsr=20)900
+T-08 PoP 11/60 under 2024-25 stack ﬂagged (18.3% > 15%)
+T-09 PoP 11/60 under 2025-26 overlay passes (18.3% ≤ 20%)
+T-10 PoP 14/60 under both ﬂagged (23.3%)
+T-11 Plan area total ≈ 10.76 × declared total "possible sq.ft/sq.m mix-up"
+T-12Role forged in login body 403 / ignored
+T-13Clean packet with CamScanner producer, no EXIF Manual Review Required at most; never Mismatch Detected
+T-14 Single Medium forensic signal Manual Review Required
+T-15 Medium (structural) + Medium (pixel) at same value Mismatch Detected
+T-16 Planner closure: inventory = planner output no eligibility ﬁndings
+T-17 reproduce.py on bundle; ﬂip 1 byte in facts.json exit 0; then non-zero
+T-18 Overlay self-approval 403
+9.5 Glossary
+APH Approval Process Handbook · EoA Extension of Approval · LoA/LoD/LoR Letter of Approval/Deﬁciency/Rejection · EVC Expert Visit Committee · SAC/SHCStanding Appellate / Hearing Committee · FSR Faculty:Student Ratio · PoP Professor of Practice · DSC Digital Signature Certiﬁcate · CCA Controller of Certifying
+Authorities · FAR False-Accusation Rate (this document) · Wilson interval binomial conﬁdence interval used for small samples · Overlay dated patch to the rulestack.
+9.6 Changelog v2.0.0 →  v2.1.0
+Area Change
+Rules Single frozen pack →  base + addenda overlays, cycle-resolved, provenance, veriﬁed ﬂags (C-06, C-10, U-01)
+Regulatorycontent Adjunct/PoP, cadre formula, relaxation, unveriﬁed FSR rows, Annexure refs (C-01…C-12)
+Model Completeness ⟂  veriﬁcation status; roll-up semantics; claim evidence levels (C-09, C-31, U-05)
+Forensics Corroboration rule; calibrated severity; ELA supporting only; revision diff (C-22…C-25, P-02)
+Veriﬁcation Tiers T0–T5, feasibility matrix, DigiLocker consent-pull design, SIMULATED watermark (U-06, P-01)
+Security/privacy Server-side roles, PAN digest, envelope encryption, authenticated page images, retention, chain checkpoints, sandbox (C-13…C-18)
+Licensing/build AGPL replacements, requirements, Docker (C-19, C-20)
+Evaluation Eight metrics, template shift, hard negatives, Wilson CIs, FAR, red-team matrix, time-and-motion (C-28, §6, U-12)
+New features Impact simulator, remediation engine, Intake Planner, Disclosure Auditor, reproducibility bundle, ﬂoor-plan reconciliation, consistency index,
+governed calibration (U-02…U-11)
+Workﬂow State machine enforcing human review (C-29)
+Scope Trimmed overlap with PS 26262; cut list (C-32, §8.5)
+
+=== PDF PAGE 36 ===
+End of document.

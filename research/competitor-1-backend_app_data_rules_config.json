@@ -1,0 +1,141 @@
+{
+  "rules": [
+    {
+      "id": "RULE_DOC_COMPLETENESS",
+      "name": "Mandatory Document Completeness",
+      "description": "Verifies that all documents required for the application category are uploaded and readable",
+      "category": "VALIDATION",
+      "severity": "CRITICAL",
+      "risk_points": 30,
+      "enabled": true,
+      "parameters": {}
+    },
+    {
+      "id": "RULE_DOC_EXPIRY",
+      "name": "Statutory Validity & Expiry Check",
+      "description": "Checks if statutory certificates (Fire NOC, Affiliation, Registration) are valid for the upcoming academic session",
+      "category": "VALIDATION",
+      "severity": "CRITICAL",
+      "risk_points": 25,
+      "enabled": true,
+      "parameters": {
+        "academic_session_start": "2026-08-01",
+        "grace_period_days": 0
+      }
+    },
+    {
+      "id": "RULE_NAME_CONSISTENCY",
+      "name": "Trust & Institution Entity Name Consistency",
+      "description": "Cross-verifies legal entity and institution names across Trust Deed, Land Deed, Fire NOC and Application Form",
+      "category": "VALIDATION",
+      "severity": "HIGH",
+      "risk_points": 20,
+      "enabled": true,
+      "parameters": {
+        "fuzzy_match_threshold": 0.85
+      }
+    },
+    {
+      "id": "RULE_LAND_AREA_COMPLIANCE",
+      "name": "Land Area & Title Verification",
+      "description": "Ensures registered land area in Title Deed matches declared area and fulfills AICTE minimum handbook norms",
+      "category": "VALIDATION",
+      "severity": "CRITICAL",
+      "risk_points": 25,
+      "enabled": true,
+      "parameters": {
+        "area_tolerance_percent": 2.0,
+        "min_acres_urban": 4.0,
+        "min_acres_rural": 7.5
+      }
+    },
+    {
+      "id": "RULE_DUPLICATE_HASH",
+      "name": "Cross-Application Duplicate Document Detection",
+      "description": "Computes SHA-256 cryptographic digest of each file to detect identical documents reused across different institutions",
+      "category": "ANOMALY",
+      "severity": "CRITICAL",
+      "risk_points": 35,
+      "enabled": true,
+      "parameters": {}
+    },
+    {
+      "id": "RULE_IMAGE_TAMPERING_ELA",
+      "name": "Error Level Analysis & Tamper Forensics",
+      "description": "Analyzes compression error disparity, localized noise variance, and digital editing software signatures (Photoshop, Canva)",
+      "category": "ANOMALY",
+      "severity": "CRITICAL",
+      "risk_points": 30,
+      "enabled": true,
+      "parameters": {
+        "ela_anomaly_threshold": 35.0,
+        "suspicious_software_keywords": ["photoshop", "canva", "gimp", "paint.net", "ilovepdf", "pdfescape"]
+      }
+    },
+    {
+      "id": "RULE_REUSED_IDENTIFIERS",
+      "name": "Reused Government Identifiers",
+      "description": "Detects if Society Registration Numbers, Land Khasra/Survey Numbers, or Fire NOC numbers are already mapped to another institution",
+      "category": "ANOMALY",
+      "severity": "CRITICAL",
+      "risk_points": 30,
+      "enabled": true,
+      "parameters": {}
+    },
+    {
+      "id": "RULE_DATE_CHRONOLOGY",
+      "name": "Chronological Sequence Sanity",
+      "description": "Verifies that issue dates respect physical chronology (e.g., Trust formed BEFORE land purchase BEFORE building plan)",
+      "category": "ANOMALY",
+      "severity": "HIGH",
+      "risk_points": 20,
+      "enabled": true,
+      "parameters": {}
+    },
+    {
+      "id": "RULE_GEOTAG_PROXIMITY",
+      "name": "Campus Photo Geotag & Timestamp Sanity",
+      "description": "Extracts EXIF GPS coordinates and timestamp from campus photographs and compares with declared site location",
+      "category": "INFRASTRUCTURE",
+      "severity": "HIGH",
+      "risk_points": 20,
+      "enabled": true,
+      "parameters": {
+        "max_distance_meters": 1500,
+        "max_age_days": 180
+      }
+    },
+    {
+      "id": "RULE_FLOORPLAN_COMPLIANCE",
+      "name": "Computer Vision Floor Plan & Classroom Count",
+      "description": "Analyzes floor plan architectural layouts to count instructional rooms and verify instructional carpet area",
+      "category": "INFRASTRUCTURE",
+      "severity": "MEDIUM",
+      "risk_points": 15,
+      "enabled": true,
+      "parameters": {
+        "min_classrooms": 12,
+        "min_carpet_area_sqm": 4200
+      }
+    },
+    {
+      "id": "RULE_ISSUER_AUTHENTICITY",
+      "name": "Government Issuing Authority Cross-Verification",
+      "description": "Queries State Land Revenue, Fire Services Directorate, and Registrar of Societies API endpoints to confirm records",
+      "category": "VERIFICATION",
+      "severity": "CRITICAL",
+      "risk_points": 30,
+      "enabled": true,
+      "parameters": {
+        "allow_offline_fallback": true
+      }
+    }
+  ],
+  "risk_score_bands": {
+    "LOW": {"min": 0, "max": 29, "label": "Low Risk", "badge_color": "green", "action": "Eligible for Accelerated Scrutiny"},
+    "MEDIUM": {"min": 30, "max": 59, "label": "Medium Risk", "badge_color": "amber", "action": "Standard Verification Required"},
+    "HIGH": {"min": 60, "max": 100, "label": "High Risk", "badge_color": "red", "action": "Full Scrutiny & Mandatory Field Inspection"}
+  },
+  "officer_feedback_history": []
+}
+

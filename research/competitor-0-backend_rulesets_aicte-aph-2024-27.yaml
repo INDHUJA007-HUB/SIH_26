@@ -1,0 +1,569 @@
+# Pramana ruleset: AICTE Approval Process Handbook 2024-25 to 2026-27, with the 2025-26 and 2026-27 (V2)
+# Addenda/Corrigenda. Every rule cites the clause and page it encodes and quotes the text. Thresholds the
+# handbook does not state (tolerances, rounding) are marked as configuration, not law.
+# Page numbers are PDF page numbers of the downloaded handbook (printed page = PDF page - 16).
+
+ruleset:
+  id: aicte-aph-2024-27
+  title: AICTE approval checks (APH 2024-27 with Addenda 2025-26 and 2026-27 V2)
+  version: 2026-27.2
+  maintainer: Regulation Bureau rules desk (prototype)
+  note: >-
+    Rules are effective from the 2026-27 public notice and stay in force until a later handbook supersedes
+    them. Applications for 2027-28 are evaluated under these rules provisionally until APH 2027-28 is
+    published and encoded as a new ruleset version.
+
+sources:
+  - id: APH
+    title: AICTE Approval Process Handbook 2024-25 to 2026-27
+    url: https://www.aicte.gov.in/sites/default/files/APH%20Final.pdf
+    published: 2023-12-08
+  - id: ADD26
+    title: AICTE Addendum/Corrigendum to APH for 2026-27 (V2)
+    url: https://www.aicte.gov.in/
+    published: 2025-12-02
+  - id: PN2627
+    title: AICTE Public Notices for 2026-27 (26.11.2025; revised 12.01.2026 and 04.02.2026)
+    url: https://www.aicte.gov.in/
+    published: 2025-11-26
+  - id: UM2627
+    title: AICTE User Manual for generating affidavits and reports, 2026-27
+    url: https://www.aicte.gov.in/
+    published: 2025-11-28
+  - id: CONFIG
+    title: Pramana configuration (not a regulatory requirement)
+    url: null
+    published: 2026-10-23
+
+norms:
+  # Annexure 5 (APH PDF p.111-112): faculty-student ratio by programme level
+  faculty_student_ratio:
+    DIPLOMA: 25
+    UG_ET: 20
+    PG_ET: 15
+    MCA: 20
+    MBA: 20
+  # Annexure 4.1 note 5 (APH PDF p.108)
+  bandwidth_tiers_mbps:
+    - {max_intake: 300, mbps: 100}
+    - {max_intake: 600, mbps: 300}
+    - {max_intake: 900, mbps: 500}
+    - {max_intake: 999999, mbps: 1000}
+  # Academic session an approval covers: configuration, not handbook law (source CONFIG). Used to show
+  # whether time-bound certificates stay valid through the year being approved.
+  academic_session: {start: "07-01", months: 12, source: CONFIG}
+
+document_types:
+  affidavit_2:
+    label: Affidavit 2 (self-disclosure on e-stamp paper)
+    description: Portal-generated Affidavit 2 on Rs 100 e-stamp paper, sworn and digitally signed by the Chairman/Secretary.
+    classify: {keywords: ["affidavit", "e-stamp", "stamp duty", "deponent", "solemnly affirm", "sworn"], min_score: 3}
+    fields:
+      - {name: estamp_certificate_no, patterns: ['Certificate No\.?\s*:\s*(?P<v>IN-[A-Z]{2}[0-9A-Z]{8,})']}
+      - {name: stamp_value, type: amount, patterns: ['Stamp Duty Amount\s*\(Rs\.?\)\s*:\s*(?P<v>[\d,]+)']}
+      - {name: purchased_by, patterns: ['Purchased by\s*:\s*(?P<v>.+)$']}
+      - {name: application_id, patterns: ['Application No\.?\s*:?\s*(?P<v>APP-\d{4}-[A-Z0-9]+)']}
+      - {name: deponent_name, patterns: ['Deponent\s*:\s*(?P<v>.+)$']}
+      - {name: deponent_role, patterns: ['Designation\s*:\s*(?P<v>.+)$']}
+      - {name: attested_by, patterns: ['Sworn before (?:me)?\s*:\s*(?P<v>.+)$']}
+      - {name: sworn_date, type: date, patterns: ['Date of Affirmation\s*:\s*(?P<v>\d{1,2}[-/.]\d{1,2}[-/.]\d{4})']}
+    verification:
+      issuer: SHCIL-ESTAMP
+      ref_field: estamp_certificate_no
+      applicant_signed: true
+
+  ter_receipt:
+    label: TER payment receipt
+    description: Pay receipt printed from the portal for Technical Education Regulatory (TER) charges.
+    classify: {keywords: ["technical education regulatory", "ter", "payment receipt", "transaction id"], min_score: 3}
+    fields:
+      - {name: application_id, patterns: ['Application No\.?\s*:?\s*(?P<v>APP-\d{4}-[A-Z0-9]+)']}
+      - {name: transaction_id, patterns: ['Transaction ID\s*:\s*(?P<v>[A-Z0-9\-]{8,})']}
+      - {name: amount, type: amount, patterns: ['Amount Paid\s*\(Rs\.?\)\s*:\s*(?P<v>[\d,]+)']}
+      - {name: payment_date, type: date, patterns: ['Payment Date\s*:\s*(?P<v>\d{1,2}[-/.]\d{1,2}[-/.]\d{4})']}
+      - {name: payment_status, patterns: ['Payment Status\s*:\s*(?P<v>Payment Received|Payment Not Applicable|Pending|Failed)']}
+
+  occupancy_certificate:
+    label: Occupancy / Completion Certificate
+    description: Valid Occupancy/Completion Certificate, Building License or Form D from the competent authority.
+    classify: {keywords: ["occupancy certificate", "completion certificate", "building permission", "built-up area", "municipal", "अधिभोग प्रमाणपत्र", "महानगरपालिका", "भवन अनुज्ञा"], min_score: 2}
+    fields:
+      - {name: certificate_no, patterns: ['Certificate No\.?\s*:\s*(?P<v>[A-Z][A-Z0-9/\-]{5,})', 'प्रमाण\S*\s*(?:संख्या|क्रमांक|सं\.)\s*[:ः]?\s*(?P<v>[A-Z][A-Z0-9/\-]{5,})']}
+      - {name: issue_date, type: date, patterns: ['Date of Issue\s*:\s*(?P<v>\d{1,2}[-/.]\d{1,2}[-/.]\d{4})', '(?:जारी\s*करने\s*की\s*(?:तिथि|तारीख)|जारी\s*(?:तिथि|दिनांक)|दिनांक)\s*[:ः]?\s*(?P<v>\d{1,2}[-/.]\d{1,2}[-/.]\d{4})']}
+      - {name: institution_name, patterns: ['Name of Institution\s*:\s*(?P<v>.+)$', 'संस्था\s*का\s*नाम\s*[:ः]?\s*(?P<v>.+)$']}
+      - {name: built_up_area_sqm, type: number, patterns: ['Total Built-up Area\s*:\s*(?P<v>[\d,]+(?:\.\d+)?)\s*sq', 'निर्मित\s*क्ष\S*\s*[:ः]?\s*(?P<v>[\d,]+(?:\.\d+)?)\s*(?:sq|वर्ग)']}
+      - {name: certificate_type, patterns: ['Certificate Type\s*:\s*(?P<v>Full|Provisional|Partial)', 'प्रमाण\S*\s*का\s*प्रकार\s*[:ः]?\s*(?:\S+\s*)?\(?(?P<v>Full|Provisional|Partial)']}
+      - {name: issuing_authority, patterns: ['Issuing Authority\s*:\s*(?P<v>.+)$', 'जारीक\S*\s*प्राधिकारी\s*[:ः]?\s*(?P<v>.+)$']}
+    verification:
+      issuer: MUNICIPAL-OC
+      ref_field: certificate_no
+      issuer_signers: ["Municipal Corporation"]
+
+  structural_stability:
+    label: Structural Stability Certificate
+    description: Required when the building is more than thirty years from its Completion Certificate; valid five years.
+    classify: {keywords: ["structural stability", "structural engineer", "fit for human habitation", "संरचनात्मक स्थिरता"], min_score: 2}
+    fields:
+      - {name: certificate_no, patterns: ['Certificate No\.?\s*:\s*(?P<v>[A-Z][A-Z0-9/\-]{4,})', 'प्रमाण\S*\s*(?:संख्या|क्रमांक|सं\.)\s*[:ः]?\s*(?P<v>[A-Z][A-Z0-9/\-]{5,})']}
+      - {name: issue_date, type: date, patterns: ['Date of Issue\s*:\s*(?P<v>\d{1,2}[-/.]\d{1,2}[-/.]\d{4})', '(?:जारी\s*करने\s*की\s*(?:तिथि|तारीख)|जारी\s*(?:तिथि|दिनांक)|दिनांक)\s*[:ः]?\s*(?P<v>\d{1,2}[-/.]\d{1,2}[-/.]\d{4})']}
+      - {name: engineer_registration_no, patterns: ['Registration No\.?\s*:\s*(?P<v>[A-Z][A-Z0-9/\-]{4,})']}
+      - {name: institution_name, patterns: ['Name of Institution\s*:\s*(?P<v>.+)$']}
+    verification:
+      issuer: SE-REGISTRY
+      ref_field: engineer_registration_no
+
+  fire_noc:
+    label: Fire Safety Certificate
+    description: Valid Fire and Life Safety Certificate from the State Fire Department, obtained before applying.
+    classify: {keywords: ["fire", "fire safety", "no objection certificate", "fire and emergency", "fire officer", "अग्निशमन", "अग्नि सुरक्षा", "अनापत्ति प्रमाणपत्र"], min_score: 3}
+    fields:
+      - {name: noc_number, patterns: ['NOC No\.?\s*:\s*(?P<v>[A-Z][A-Z0-9/\-]{5,})', '(?:अनापत्ति\s*)?प्रमाण\S*\s*(?:संख्या|क्रमांक)\s*[:ः]?\s*(?P<v>[A-Z][A-Z0-9/\-]{5,})']}
+      - {name: issue_date, type: date, patterns: ['Date of Issue\s*:\s*(?P<v>\d{1,2}[-/.]\d{1,2}[-/.]\d{4})', '(?:जारी\s*करने\s*की\s*(?:तिथि|तारीख)|जारी\s*(?:तिथि|दिनांक)|दिनांक)\s*[:ः]?\s*(?P<v>\d{1,2}[-/.]\d{1,2}[-/.]\d{4})']}
+      - {name: valid_until, type: date, patterns: ['Valid\s*(?:Up\s*To|Upto|Till|Until)\s*:\s*(?P<v>\d{1,2}[-/.]\d{1,2}[-/.]\d{4})', '(?:वैध\s*(?:तिथि|दिनांक)|वैधता\s*(?:तिथि|तक)|तक\s*वैध)\s*[:ः]?\s*(?P<v>\d{1,2}[-/.]\d{1,2}[-/.]\d{4})']}
+      - {name: institution_name, patterns: ['Issued to\s*:\s*(?P<v>.+)$', 'संस्था\s*का\s*नाम\s*[:ः]?\s*(?P<v>.+)$']}
+      - {name: issuing_authority, patterns: ['Issuing Authority\s*:\s*(?P<v>.+)$', 'जारीक\S*\s*प्राधिकारी\s*[:ः]?\s*(?P<v>.+)$']}
+    verification:
+      issuer: FIRE-SERVICES
+      ref_field: noc_number
+      issuer_signers: ["Fire and Emergency Services"]
+      qr_fields: {noc: noc_number, valid_until: valid_until, issued_to: institution_name}
+
+  satellite_map:
+    label: Satellite map with coordinates
+    description: Satellite map showing the land with latitude and longitude at the entrance of the main building.
+    classify: {keywords: ["satellite", "latitude", "longitude", "main building"], min_score: 3}
+    fields:
+      - {name: latitude, type: number, patterns: ['Latitude\s*:\s*(?P<v>-?\d{1,2}\.\d{3,})']}
+      - {name: longitude, type: number, patterns: ['Longitude\s*:\s*(?P<v>-?\d{1,3}\.\d{3,})']}
+
+  audited_accounts:
+    label: Audited statement of accounts (previous year)
+    description: Audited statement of accounts of the Trust/Society/Company for the previous financial year.
+    classify: {keywords: ["auditor", "balance sheet", "chartered accountants", "udin", "financial year"], min_score: 3}
+    fields:
+      - {name: entity_name, patterns: ['To the (?:Members|Trustees|Governing Body) of\s*(?P<v>.+)$']}
+      - {name: financial_year, patterns: ['Financial Year\s*:?\s*(?P<v>\d{4}-\d{2})']}
+      - {name: udin, patterns: ['UDIN\s*:?\s*(?P<v>\d{8}[A-Z0-9]{10})']}
+    verification:
+      issuer: ICAI-UDIN
+      ref_field: udin
+
+  faculty_list:
+    label: Faculty roster (portal faculty data extract)
+    description: Faculty IDs, names, designations and joining dates as entered on the portal.
+    classify: {keywords: ["faculty id", "designation", "date of joining", "qualification"], min_score: 3}
+    fields:
+      - {name: total_faculty, type: integer, patterns: ['Total Faculty\s*:\s*(?P<v>\d+)']}
+    table:
+      row_pattern: '^(?P<sno>\d+)\s+(?P<faculty_id>FID-\d{8})\s+(?P<name>.+?)\s+(?P<designation>Principal|Professor|Associate Professor|Assistant Professor)\s+(?P<qualification>Ph\.?D\.?|M\.?Tech\.?|M\.?E\.?|MBA|MCA|M\.?Sc\.?)\s+(?P<doj>\d{2}-\d{2}-\d{4})'
+
+  nba_certificate:
+    label: NBA accreditation letter
+    description: Accreditation status letter for a programme, needed when NBA status is claimed.
+    classify: {keywords: ["accreditation", "national board of accreditation", "programme", "accredited"], min_score: 3}
+    fields:
+      - {name: nba_ref, patterns: ['Ref\.?\s*No\.?\s*:\s*(?P<v>NBA/[A-Z0-9/\-]+)']}
+      - {name: institution_name, patterns: ['Institution\s*:\s*(?P<v>.+)$']}
+      - {name: programme_code, patterns: ['Programme Code\s*:\s*(?P<v>[A-Z]{2,4})']}
+      - {name: valid_from, type: date, patterns: ['Valid From\s*:\s*(?P<v>\d{1,2}[-/.]\d{1,2}[-/.]\d{4})']}
+      - {name: valid_until, type: date, patterns: ['Valid\s*(?:Up\s*To|Upto|Till|Until)\s*:\s*(?P<v>\d{1,2}[-/.]\d{1,2}[-/.]\d{4})']}
+    verification:
+      qr_fields: {ref: nba_ref, programme_code: programme_code, valid_until: valid_until}
+
+  infrastructure_photo:
+    label: Infrastructure photograph
+    description: Photograph of classrooms, laboratories or other facilities, preferably geotagged.
+    classify: {keywords: [], min_score: 99}
+    fields: []
+
+checklists:
+  EOA:
+    label: Extension of Approval (self-disclosure)
+    source: {doc: APH, section: Annexure 2.1, page: 97}
+    required: [affidavit_2, ter_receipt, occupancy_certificate, fire_noc, satellite_map, audited_accounts, faculty_list]
+    optional: [structural_stability, nba_certificate, infrastructure_photo]
+  INCREASE_INTAKE:
+    label: Increase in intake / additional course
+    source: {doc: ADD26, section: Cl. 2.6(c), page: 5}
+    required: [affidavit_2, ter_receipt, occupancy_certificate, fire_noc, satellite_map, audited_accounts, faculty_list]
+    optional: [structural_stability, nba_certificate, infrastructure_photo]
+
+rules:
+  # ---------------- Completeness: Annexure 2.1 documents ----------------
+  - id: APH-A21-AFFIDAVIT
+    version: 1
+    title: Affidavit 2 uploaded
+    category: completeness
+    severity: high
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE]}
+    source: {doc: APH, section: Annexure 2.1(i), page: 97,
+             quote: "An Affidavit 2 with digital signature of the Chairman/ Secretary of the Trust/ Society/ Company on an e-stamp paper of Rs. 100/- duly sworn before a First Class Judicial Magistrate or Notary or an Oath Commissioner."}
+    check: {type: document_present, doc_type: affidavit_2}
+    messages: {fail: "Affidavit 2 has not been uploaded."}
+
+  - id: APH-A21-TER-RECEIPT
+    version: 1
+    title: TER pay receipt uploaded
+    category: completeness
+    severity: medium
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE]}
+    source: {doc: APH, section: Annexure 2.1(ii), page: 97,
+             quote: "Copy of pay receipt print made on AICTE Web-Portal if any, in respect of Extension of Approval for the respective Academic Year."}
+    check: {type: document_present, doc_type: ter_receipt}
+    messages: {fail: "TER pay receipt has not been uploaded."}
+
+  - id: APH-A21-OC
+    version: 1
+    title: Occupancy / Completion Certificate uploaded
+    category: completeness
+    severity: high
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE]}
+    source: {doc: APH, section: Annexure 2.1(iii), page: 97,
+             quote: "valid Occupancy/ Completion Certificate/ Building License/ Form D issued by the Competent Authority."}
+    check: {type: document_present, doc_type: occupancy_certificate}
+    messages: {fail: "Occupancy/Completion Certificate has not been uploaded."}
+
+  - id: APH-A21-SSC-REQUIRED
+    version: 1
+    title: Structural Stability Certificate for buildings over 30 years
+    category: completeness
+    severity: high
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE], when: "derived.years_since_completion > 30"}
+    source: {doc: APH, section: Annexure 2.1(iv); Cl. 6.17(h), page: 97,
+             quote: "Valid Structural Stability Certificate from the registered Structural Engineer, if the Building is more than thirty years from the issue of Completion Certificate that the Building is fit for human habitation."}
+    check: {type: document_present, doc_type: structural_stability}
+    messages: {fail: "The completion certificate is more than 30 years old, so a Structural Stability Certificate is required but was not uploaded."}
+
+  - id: APH-A21-FIRE
+    version: 1
+    title: Fire Safety Certificate uploaded
+    category: completeness
+    severity: high
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE]}
+    source: {doc: APH, section: Annexure 2.1(v), page: 97, quote: "A valid Fire Safety Certificate issued by the Competent Authority."}
+    check: {type: document_present, doc_type: fire_noc}
+    messages: {fail: "Fire Safety Certificate has not been uploaded."}
+
+  - id: APH-A21-SATMAP
+    version: 1
+    title: Satellite map with coordinates uploaded
+    category: completeness
+    severity: medium
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE]}
+    source: {doc: APH, section: Annexure 2.1(vi), page: 97,
+             quote: "Satellite map, using suitable Web site, showing geographical location of the Land with latitude and longitude at the entrance of the main Building mentioned on it."}
+    check: {type: document_present, doc_type: satellite_map}
+    messages: {fail: "Satellite map with coordinates has not been uploaded."}
+
+  - id: APH-A21-ACCOUNTS
+    version: 1
+    title: Audited statement of accounts uploaded
+    category: completeness
+    severity: medium
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE]}
+    source: {doc: APH, section: Annexure 2.1(vii), page: 97,
+             quote: "Audited statement of accounts of the Trust/ Society/ Company of the previous year."}
+    check: {type: document_present, doc_type: audited_accounts}
+    messages: {fail: "Audited statement of accounts has not been uploaded."}
+
+  # ---------------- Validity of documents ----------------
+  - id: APH-617I-FIRE-VALID
+    version: 1
+    title: Fire Safety Certificate valid on the date of submission
+    category: validity
+    severity: high
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE], requires_docs: [fire_noc]}
+    source: {doc: APH, section: Cl. 6.17(i); Annexure 3.1(d), page: 73,
+             quote: "A valid Fire Safety Certificate shall be obtained from the Competent Authority."}
+    check: {type: expression, expr: "doc.fire_noc.valid_until >= as_of"}
+    # A certificate sent in a rectification round is judged on the day it was submitted
+    as_of: document
+    messages:
+      pass: "Valid until {doc_fire_noc_valid_until}; submission date {as_of}."
+      fail: "Fire Safety Certificate expired on {doc_fire_noc_valid_until}, before the submission date {as_of}."
+    limitation: The validity period of a fire certificate is set by the issuing State, not by the APH.
+
+  - id: APH-A31D-FIRE-BEFORE
+    version: 1
+    title: Fire certificate obtained before applying
+    category: validity
+    severity: medium
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE], requires_docs: [fire_noc]}
+    source: {doc: APH, section: Annexure 3.1(d), page: 102,
+             quote: "Fire and life Safety Certificate from Fire Department of the concerned State Government authority is to be taken before submitting the application at AICTE."}
+    check: {type: expression, expr: "doc.fire_noc.issue_date <= as_of"}
+    as_of: document
+    messages: {fail: "Fire certificate is dated {doc_fire_noc_issue_date}, after the submission date {as_of}."}
+
+  - id: APH-617H-SSC-VALID
+    version: 1
+    title: Structural Stability Certificate within its five-year validity
+    category: validity
+    severity: high
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE], requires_docs: [structural_stability]}
+    source: {doc: APH, section: Cl. 6.17(h), page: 73,
+             quote: "Structural Stability Certificate is valid for a period of FIVE years from the date of issue."}
+    check: {type: expression, expr: "days_between(doc.structural_stability.issue_date, as_of) <= 1826"}
+    as_of: document
+    messages: {fail: "Structural Stability Certificate issued {doc_structural_stability_issue_date} is older than five years on {as_of}."}
+
+  - id: APH-AFF2-FORM
+    version: 1
+    title: Affidavit 2 on Rs 100 e-stamp, sworn before an authorised officer
+    category: validity
+    severity: medium
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE], requires_docs: [affidavit_2]}
+    source: {doc: APH, section: Cl. 2.3.4(b), page: 31,
+             quote: "An Affidavit 2 sworn before First Class Judicial Magistrate or Public Notary or an Oath Commissioner on Rs.100/- Non-Judicial stamp paper / e-stamp paper shall be Digitally Signed & uploaded on AICTE web portal."}
+    check:
+      type: expression
+      expr: "doc.affidavit_2.stamp_value >= 100 and ('notary' in lower(doc.affidavit_2.attested_by) or 'magistrate' in lower(doc.affidavit_2.attested_by) or 'oath commissioner' in lower(doc.affidavit_2.attested_by))"
+    messages: {fail: "Affidavit 2 form is not as prescribed: stamp value Rs {doc_affidavit_2_stamp_value}, sworn before '{doc_affidavit_2_attested_by}'."}
+
+  - id: APH-639-AFF2-DSC
+    version: 1
+    title: Affidavit 2 carries a valid digital signature of the authorised signatory
+    category: validity
+    severity: high
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE], requires_docs: [affidavit_2]}
+    source: {doc: APH, section: Cl. 6.39; Cl. 1.4.6, page: 75,
+             quote: "All the AICTE Approved Institutions /Universities shall mandatorily upload Affidavit 2 ... in an e-stamp paper with digital signature of the authorized signatories."}
+    check: {type: expression, expr: "ver.affidavit_2.applicant_signature == 'verified'"}
+    messages:
+      pass: "Applicant digital signature on Affidavit 2 is intact and chains to a configured anchor."
+      fail: "Affidavit 2 digital signature status is '{ver_affidavit_2_applicant_signature}'."
+
+  - id: XD-AFF2-APPLICATION
+    version: 1
+    title: Affidavit 2 is for this application
+    category: consistency
+    severity: high
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE], requires_docs: [affidavit_2]}
+    source: {doc: UM2627, section: Generating affidavits, page: 3,
+             quote: "Common Affidavit, Non-Common Affidavit, Application Report Part 1, Part 2 and Deficiency Report are generated under the Attachments tab."}
+    check: {type: expression, expr: "doc.affidavit_2.application_id == app.id"}
+    messages: {fail: "Affidavit 2 names application {doc_affidavit_2_application_id}, not {app_id}. It may have been generated for another application or year."}
+
+  # ---------------- TER (fee) ----------------
+  - id: APH-232D-TER-STATUS
+    version: 1
+    title: TER payment received per the AICTE payment ledger
+    category: compliance
+    severity: high
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE]}
+    source: {doc: APH, section: Cl. 2.3.2(d), page: 30,
+             quote: "The TER Charges shall be paid through AICTE payment gateway on AICTE Web-Portal within the deadline, failing which, the application shall not be considered for processing."}
+    check: {type: expression, expr: "ref.fee.status in ['Payment Received', 'Payment Not Applicable']"}
+    messages:
+      pass: "Ledger status: {ref_fee_status}."
+      fail: "Ledger status is '{ref_fee_status}'. Affidavits and reports need 'Payment Received' or 'Payment Not Applicable'."
+      insufficient: "No TER payment entry exists in the payment ledger for this application."
+
+  - id: XR-TER-RECEIPT-MATCH
+    version: 1
+    title: TER receipt matches the payment ledger
+    category: consistency
+    severity: high
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE], requires_docs: [ter_receipt]}
+    source: {doc: APH, section: Annexure 2.1(ii); Ch. VIII item 9, page: 97,
+             quote: "Copy of pay receipt print made on AICTE Web-Portal if any, in respect of Extension of Approval for the respective Academic Year."}
+    check: {type: expression, expr: "doc.ter_receipt.transaction_id == ref.fee.txn_id and doc.ter_receipt.amount == ref.fee.amount"}
+    messages: {fail: "Receipt shows transaction {doc_ter_receipt_transaction_id} for Rs {doc_ter_receipt_amount}; the ledger has {ref_fee_txn_id} for Rs {ref_fee_amount}."}
+
+  - id: PN2627-DEADLINE
+    version: 1
+    title: Submitted within the 2026-27 application window
+    category: compliance
+    severity: medium
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE], when: "app.academic_year == '2026-27'"}
+    source: {doc: PN2627, section: Revised Public Notice 12.01.2026, page: 1,
+             quote: "The submission of an application on the AICTE Web-Portal and payment of TER Charges shall not be later than the last date as notified in the Public Notice."}
+    check: {type: expression, expr: "app.submitted_on <= date('2026-01-20')"}
+    messages:
+      pass: "Submitted {app_submitted_on}: within the window (without late fee until 17-01-2026, with late fee until 20-01-2026)."
+      fail: "Submitted {app_submitted_on}, after the last date with late fee (20-01-2026)."
+
+  # ---------------- Institutional record consistency ----------------
+  - id: XR-INTAKE-RECORD
+    version: 1
+    title: Declared approved intake matches the AICTE approval record
+    category: consistency
+    severity: high
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE]}
+    source: {doc: APH, section: Cl. 7.4(g), page: 87,
+             quote: "Excess admission over the 'Approved Intake' shall not be allowed under any circumstances."}
+    check: {type: expression, expr: "len(derived.intake_mismatches) == 0", show: {list: "join(derived.intake_mismatches)"}}
+    messages: {fail: "Declared approved intake differs from the last approval record: {list}."}
+
+  - id: XR-EOA-NO-INCREASE
+    version: 1
+    title: EoA does not seek more than the approved intake
+    category: compliance
+    severity: high
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA]}
+    source: {doc: APH, section: Cl. 2.6, page: 32,
+             quote: "Before grant of approval to the increase in intake sought by the institution, the council shall ascertain the infrastructure and faculty availability through an EVC."}
+    check: {type: expression, expr: "app.total_proposed_intake <= ref.approval.total_intake"}
+    messages: {fail: "Proposed intake {app_total_proposed_intake} exceeds the approved intake {ref_approval_total_intake} on record. An increase needs an Increase in Intake application, not EoA."}
+    limitation: EoA is granted on self-disclosure without an EVC, so an increase routed through EoA would skip the verification Cl. 2.6 requires.
+
+  - id: XD-OC-INSTITUTION
+    version: 1
+    title: Occupancy certificate names this institution
+    category: consistency
+    severity: medium
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE], requires_docs: [occupancy_certificate]}
+    source: {doc: APH, section: Annexure 16.8 (Scrutiny Committee role), page: 194,
+             quote: "Verify the authenticity of the documents submitted by the Applicant as specified in Annexure 1/2."}
+    check: {type: expression, expr: "similar(doc.occupancy_certificate.institution_name, inst.name) >= 85", show: {score: "similar(doc.occupancy_certificate.institution_name, inst.name)"}}
+    messages: {fail: "Occupancy certificate names '{doc_occupancy_certificate_institution_name}', which does not match '{inst_name}' (similarity {score})."}
+    limitation: Name similarity threshold 85 is configuration, not a handbook requirement.
+
+  - id: XD-OC-AREA
+    version: 1
+    title: Declared built-up area is covered by the occupancy certificate
+    category: consistency
+    severity: high
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE], requires_docs: [occupancy_certificate]}
+    source: {doc: APH, section: Affidavit 2 item 12; Annexure 3.2(c), page: 103,
+             quote: "Total Built-up area in m2 is equal to (INA+ADA+AMA) + (ACA)."}
+    check: {type: expression, expr: "app.built_up_area_sqm <= doc.occupancy_certificate.built_up_area_sqm"}
+    messages: {fail: "Declared built-up area {app_built_up_area_sqm} sq m exceeds the {doc_occupancy_certificate_built_up_area_sqm} sq m covered by the occupancy certificate."}
+
+  - id: XD-FIRE-INSTITUTION
+    version: 1
+    title: Fire certificate names this institution
+    category: consistency
+    severity: high
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE], requires_docs: [fire_noc]}
+    source: {doc: APH, section: Annexure 16.8 (Scrutiny Committee role), page: 194,
+             quote: "Verify the authenticity of the documents submitted by the Applicant as specified in Annexure 1/2."}
+    check: {type: expression, expr: "similar(doc.fire_noc.institution_name, inst.name) >= 85", show: {score: "similar(doc.fire_noc.institution_name, inst.name)"}}
+    messages: {fail: "Fire certificate is issued to '{doc_fire_noc_institution_name}', not '{inst_name}' (similarity {score})."}
+    limitation: Name similarity threshold 85 is configuration, not a handbook requirement.
+
+  - id: XD-ACCOUNTS-ENTITY
+    version: 1
+    title: Audited accounts are of the institution's Trust/Society for the previous year
+    category: consistency
+    severity: medium
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE], requires_docs: [audited_accounts]}
+    source: {doc: APH, section: Annexure 2.1(vii), page: 97,
+             quote: "Audited statement of accounts of the Trust/ Society/ Company of the previous year."}
+    check: {type: expression, expr: "similar(doc.audited_accounts.entity_name, inst.society_name) >= 85 and doc.audited_accounts.financial_year == derived.previous_fy", show: {score: "similar(doc.audited_accounts.entity_name, inst.society_name)"}}
+    messages: {fail: "Accounts are of '{doc_audited_accounts_entity_name}' for FY {doc_audited_accounts_financial_year}; expected '{inst_society_name}' for FY {derived_previous_fy} (name similarity {score})."}
+
+  - id: XD-SATMAP-LOCATION
+    version: 1
+    title: Satellite map coordinates match the campus location on record
+    category: consistency
+    severity: medium
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE], requires_docs: [satellite_map]}
+    source: {doc: CONFIG, section: "Tolerance 0.5 km (configuration); requirement from APH Annexure 2.1(vi)", page: null,
+             quote: "Satellite map ... showing geographical location of the Land with latitude and longitude at the entrance of the main Building mentioned on it."}
+    check: {type: expression, expr: "geo_km(doc.satellite_map.latitude, doc.satellite_map.longitude, inst.latitude, inst.longitude) <= 0.5", show: {km: "geo_km(doc.satellite_map.latitude, doc.satellite_map.longitude, inst.latitude, inst.longitude)"}}
+    messages:
+      pass: "Map point is {km} km from the campus location on record."
+      fail: "Map point is {km} km from the campus location on record (tolerance 0.5 km). The institution may be operating from a different site."
+    limitation: The 0.5 km tolerance is a configurable assumption; the APH sets no distance.
+
+  # ---------------- Norms ----------------
+  - id: APH-ANX5-FSR
+    version: 1
+    title: Faculty-student ratio met (Annexure 5)
+    category: compliance
+    severity: high
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE], requires_docs: [faculty_list]}
+    source: {doc: APH, section: Annexure 5, page: 111,
+             quote: "S - Sum of the number of students as per 'Approved Intake' for all years. Faculty:Student ratio UG Engineering and Technology 1:20, PG 1:15, MCA 1:20, MBA/PGDM 1:20, Diploma 1:25."}
+    check: {type: expression, expr: "doc.faculty_list.row_count >= derived.required_faculty"}
+    messages:
+      pass: "{doc_faculty_list_row_count} faculty listed; {derived_required_faculty} required."
+      fail: "{doc_faculty_list_row_count} faculty listed but {derived_required_faculty} are required by Annexure 5."
+    limitation: The 25% relief for low admissions is not applied (admission history not modelled); rounding up is an assumption.
+
+  - id: XD-FACULTY-COUNT
+    version: 1
+    title: Declared faculty count matches the faculty roster
+    category: consistency
+    severity: medium
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE], requires_docs: [faculty_list]}
+    source: {doc: APH, section: Affidavit 2 item 9, page: 202,
+             quote: "That the Faculty norms as well as Faculty : Student ratio is maintained as per Approval Process Handbook and the Faculty data uploaded is true and complete;"}
+    check: {type: expression, expr: "app.faculty_count == doc.faculty_list.row_count"}
+    messages: {fail: "Application declares {app_faculty_count} faculty but the roster lists {doc_faculty_list_row_count}."}
+
+  - id: APH-ANX41-BANDWIDTH
+    version: 1
+    title: Internet bandwidth meets the intake tier
+    category: compliance
+    severity: low
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE]}
+    source: {doc: APH, section: Annexure 4.1 note 5, page: 108,
+             quote: "For Intake up to 300: 100Mbps, 301-600: 300Mbps, 601-900: 500Mbps, > 900: 1Gbpa."}
+    check: {type: expression, expr: "app.internet_bandwidth_mbps >= derived.required_bandwidth_mbps"}
+    messages: {fail: "Declared bandwidth {app_internet_bandwidth_mbps} Mbps is below the {derived_required_bandwidth_mbps} Mbps tier for this intake."}
+
+  - id: APH-ANX33-ADMIN-AREA
+    version: 1
+    title: Administrative and amenities area minimums (intake up to 300)
+    category: compliance
+    severity: medium
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE], when: "app.total_approved_intake_claimed <= 300"}
+    source: {doc: APH, section: Annexure 3.3 and 3.4, page: 106,
+             quote: "An institution should possess a total administrative area of minimum 750 sq. m. for an approved intake up to 300. An institution should possess a total amenities area of minimum 500 sq. m. for an approved intake up to 300."}
+    check: {type: expression, expr: "app.administrative_area_sqm >= 750 and app.amenities_area_sqm >= 500"}
+    messages: {fail: "Declared administrative area {app_administrative_area_sqm} sq m (min 750) and amenities area {app_amenities_area_sqm} sq m (min 500)."}
+
+  - id: XR-NBA-CLAIMS
+    version: 1
+    title: NBA accreditation claims are supported by the accreditation register
+    category: consistency
+    severity: high
+    effective_from: 2025-11-26
+    applies_to: {categories: [EOA, INCREASE_INTAKE]}
+    source: {doc: ADD26, section: Cl. 2.6 NBA table, page: 5,
+             quote: "Institutions with valid NBA (up to 30th April 2026): a) Increase in Intake/Additional Course(s) shall be permitted up to ... Institutions not having NBA accreditation: e) Increase in Intake/Additional Course(s) shall be permitted up to maximum permissible intake as specified in Table 1.3."}
+    check: {type: expression, expr: "len(derived.nba_claims_unsupported) == 0", show: {list: "join(derived.nba_claims_unsupported)"}}
+    messages: {fail: "Programmes declared NBA-accredited without a valid register entry: {list}. NBA status affects multi-year EoA and intake caps."}
+    limitation: A false NBA claim matters most where NBA status changes the outcome (multi-year EoA, intake caps).
+
+  - id: ADD26-26C-CORE-BRANCHES
+    version: 1
+    title: Increase in intake requires three core branches, two outside CS
+    category: compliance
+    severity: high
+    effective_from: 2025-11-26
+    applies_to: {categories: [INCREASE_INTAKE]}
+    source: {doc: ADD26, section: Cl. 2.6(c)(i), page: 5,
+             quote: "permissible only if the Institution is already offering a minimum of three (3) core branch courses, of which at least two (2) shall be from non-Computer Science or non-allied disciplines as defined in the broad classification of Annexure 11."}
+    check: {type: expression, expr: "derived.core_branch_count >= 3 and derived.non_cs_core_count >= 2"}
+    messages: {fail: "Institution offers {derived_core_branch_count} core branches, {derived_non_cs_core_count} outside CS and allied disciplines."}
+
