@@ -143,6 +143,114 @@ async def test_activity_cancellation_reconciliation(h):
         assert op["error_code"] == "OPERATION_CANCELLED"
 
 
+@pytest.mark.anyio
+async def test_phase_5_exit_gate_worker_kill_and_recovery(h):
+    """Exit Gate Phase 5: Kill a worker mid-job, resume work under stable business key,
+    and verify committed work produces one finalized effect without corrupted progress.
+    """
+    inst_id = h.institutions["a"]
+    app = h.create(actor="a")
+    app_id = app["id"]
+    stable_key = f"worker_kill_gate_test_{uuid4().hex}"
+
+    class StoreWrapper:
+        def __init__(self, engine):
+            self.engine = engine
+
+        def system_transaction(self):
+            return self.engine.begin()
+
+    store = StoreWrapper(h.owner)
+    env = ActivityEnvironment()
+
+    attempts = 0
+
+    def crash_prone_worker():
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise RuntimeError("Worker process terminated abruptly mid-job")
+        return {"result": "processed_cleanly", "items": 10}
+
+    # 1. First execution: worker is killed mid-job
+    with pytest.raises(RuntimeError, match="Worker process terminated abruptly"):
+        await env.run(
+            execute_idempotent_activity,
+            domain_store=store,
+            institution_id=inst_id,
+            application_id=app_id,
+            operation_type=OperationType.DOCUMENT_EXTRACTION.value,
+            task_queue=TaskQueue.DOCUMENT.value,
+            stable_key=stable_key,
+            input_ref={"evidence_id": "ev_crash"},
+            execute_fn=crash_prone_worker,
+            heartbeat_msg="extracting",
+        )
+
+    # Verify state in database after worker crash: recorded as FAILED, no corrupt progress state
+    with h.owner.begin() as conn:
+        op = OperationsService.create_or_get_operation(
+            conn,
+            institution_id=inst_id,
+            application_id=app_id,
+            operation_type=OperationType.DOCUMENT_EXTRACTION.value,
+            task_queue=TaskQueue.DOCUMENT.value,
+            stable_key=stable_key,
+            input_ref={},
+        )
+        assert op["status"] == OperationStatus.FAILED.value
+        assert op["error_code"] == "ACTIVITY_ERROR"
+
+    # 2. Worker restarts/resumes and retries under the same stable business key
+    res = await env.run(
+        execute_idempotent_activity,
+        domain_store=store,
+        institution_id=inst_id,
+        application_id=app_id,
+        operation_type=OperationType.DOCUMENT_EXTRACTION.value,
+        task_queue=TaskQueue.DOCUMENT.value,
+        stable_key=stable_key,
+        input_ref={"evidence_id": "ev_crash"},
+        execute_fn=crash_prone_worker,
+        heartbeat_msg="extracting",
+    )
+    assert res["status"] == OperationStatus.SUCCEEDED.value
+    assert res["output"] == {"result": "processed_cleanly", "items": 10}
+    assert res["replayed"] is False
+    assert attempts == 2
+
+    # 3. Subsequent retry: safely returns cached output with one finalized business effect
+    res_replay = await env.run(
+        execute_idempotent_activity,
+        domain_store=store,
+        institution_id=inst_id,
+        application_id=app_id,
+        operation_type=OperationType.DOCUMENT_EXTRACTION.value,
+        task_queue=TaskQueue.DOCUMENT.value,
+        stable_key=stable_key,
+        input_ref={"evidence_id": "ev_crash"},
+        execute_fn=crash_prone_worker,
+        heartbeat_msg="extracting",
+    )
+    assert res_replay["status"] == OperationStatus.SUCCEEDED.value
+    assert res_replay["replayed"] is True
+    # Side-effect function was NOT called a third time
+    assert attempts == 2
+
+    # Verify database has exactly 1 finalized record
+    with h.owner.begin() as conn:
+        final_op = OperationsService.create_or_get_operation(
+            conn,
+            institution_id=inst_id,
+            application_id=app_id,
+            operation_type=OperationType.DOCUMENT_EXTRACTION.value,
+            task_queue=TaskQueue.DOCUMENT.value,
+            stable_key=stable_key,
+            input_ref={},
+        )
+        assert final_op["status"] == OperationStatus.SUCCEEDED.value
+
+
 def test_concurrency_governor_tenant_and_media_limits(h):
     """Verify tenant in-flight limits and media queue isolation with HTTP 429 semantics."""
     inst_id = h.institutions["a"]

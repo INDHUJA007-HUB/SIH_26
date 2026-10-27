@@ -563,3 +563,39 @@ def test_api_endpoints_evaluations_and_findings(h) -> None:
         assert ev_data["finding_id"] == finding_id
         assert "calculation_trace" in ev_data
         assert ev_data["adverse_action_allowed"] is False
+
+
+def test_evaluation_cross_tenant_denial(h) -> None:
+    """Phase 2 & 7 Exit Gate: Institution B actor cannot access
+    institution A's evaluations or findings.
+    """
+    inst_a = h.institutions["a"]
+    app = h.create(actor="a")
+    app_id = app["id"]
+
+    eval_service = EvaluationService(h.owner)
+    eval_res = eval_service.run_evaluation(
+        institution_id=inst_a,
+        application_id=app_id,
+        evaluation_as_of="2026-10-26",
+        execution_mode="DEMONSTRATION",
+    )
+    eval_id = eval_res["run_id"]
+    findings = eval_service.get_findings_for_run(eval_id)
+    finding_id = findings[0]["id"] if findings else None
+
+    # Actor B attempts to fetch Institution A's evaluation -> 404 (or 403)
+    res_eval = h.call("GET", f"/api/v1/evaluations/{eval_id}", actor="b")
+    assert res_eval.status_code in (403, 404), res_eval.text
+
+    # Actor B attempts to fetch findings -> 404 (or 403)
+    res_findings = h.call("GET", f"/api/v1/evaluations/{eval_id}/findings", actor="b")
+    assert res_findings.status_code in (403, 404), res_findings.text
+
+    # Actor B attempts to trigger evaluation on Institution A's app -> 404 (or 403)
+    res_post = h.call("POST", f"/api/v1/applications/{app_id}/evaluations", actor="b", json={})
+    assert res_post.status_code in (403, 404), res_post.text
+
+    if finding_id:
+        res_ev = h.call("GET", f"/api/v1/findings/{finding_id}/evidence", actor="b")
+        assert res_ev.status_code in (403, 404), res_ev.text
