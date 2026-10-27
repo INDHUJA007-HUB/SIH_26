@@ -1,0 +1,16 @@
+{
+  "release_id": "engineering-synthetic-baseline-v1",
+  "execution_mode": "DEMONSTRATION",
+  "production_enabled": false,
+  "adverse_action_allowed": false,
+  "regulatory_approval": "NOT_GRANTED",
+  "scope": {"category": "EOA_STYLE_SYNTHETIC", "programme": "ENGINEERING_AND_TECHNOLOGY", "level": "UG", "cycle_start": 2026},
+  "research_seed_reference": "output/AICTE_PS26261_Rule_Evidence_Register.json",
+  "scenarios": [
+    {"id": "DEMO.COMPLETENESS", "behavior": "Missing synthetic certificate slot remains separate from issuer verification"},
+    {"id": "DEMO.BANDWIDTH", "source": "U02 Annexure 4.1 note 5, printed 92/PDF108", "approved_intake_fixture": 420, "observed_mbps": 100, "expected_mbps": 300, "input_basis": "explicit synthetic approved-intake fixture", "rounding": "exact integer tier comparison"},
+    {"id": "DEMO.SOURCE_OUTAGE", "behavior": "Unavailable simulated issuer creates an owner task without mismatch"},
+    {"id": "DEMO.FORENSIC_SEPARATION", "behavior": "Advisory media flag cannot modify a source result"}
+  ],
+  "excluded": ["unresolved faculty cadre arithmetic", "unapproved relaxation rounding", "unconfirmed current amendments", "statutory approval/rejection", "live provider success"]
+}

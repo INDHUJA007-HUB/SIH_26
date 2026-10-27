@@ -11,3 +11,17 @@ Thumbs.db
 !.env.example
 .venv/
 venv/
+
+# Foundation development state and generated verification artifacts
+.local/
+.tools/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+backend/.coverage
+.coverage
+backend/htmlcov/
+backend/coverage.xml
+backend/.venv/
+artifacts/
+*.egg-info/
