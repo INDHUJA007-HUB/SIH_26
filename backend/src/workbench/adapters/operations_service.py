@@ -131,11 +131,7 @@ class OperationsService:
         if workflow_id:
             values["workflow_id"] = workflow_id
 
-        stmt = (
-            update(t.operations)
-            .where(t.operations.c.id == operation_id)
-            .values(**values)
-        )
+        stmt = update(t.operations).where(t.operations.c.id == operation_id).values(**values)
         connection.execute(stmt)
         return OperationsService.get_operation(connection, operation_id)
 

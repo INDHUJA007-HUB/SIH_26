@@ -108,10 +108,7 @@ class ReportInput:
 
     @property
     def stable_key(self) -> str:
-        return (
-            f"{self.run_id}:{self.audience_policy}:"
-            f"{self.template_version}:{self.report_variant}"
-        )
+        return f"{self.run_id}:{self.audience_policy}:{self.template_version}:{self.report_variant}"
 
 
 @dataclass(frozen=True)

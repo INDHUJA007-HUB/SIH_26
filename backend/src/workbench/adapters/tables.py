@@ -9,6 +9,7 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     DateTime,
+    Float,
     ForeignKey,
     ForeignKeyConstraint,
     Index,
@@ -387,6 +388,122 @@ reconciliation_cursors = Table(
     Column("position", JSON, nullable=False),
 )
 
+extraction_runs = Table(
+    "extraction_runs",
+    metadata,
+    pk(),
+    institution(),
+    Column("application_id", String(36)),
+    Column("evidence_version_id", String(36), ForeignKey("evidence_versions.id"), nullable=False),
+    Column("extractor_version", String(80), nullable=False),
+    Column("document_type", String(80), nullable=False),
+    Column("page_count", Integer, nullable=False, server_default="1"),
+    Column("status", String(30), nullable=False),
+    Column("metadata", JSON),
+    time_created(),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
+
+extracted_fields = Table(
+    "extracted_fields",
+    metadata,
+    pk(),
+    Column("run_id", String(36), ForeignKey("extraction_runs.id"), nullable=False),
+    institution(),
+    Column("application_id", String(36)),
+    Column("evidence_version_id", String(36), ForeignKey("evidence_versions.id"), nullable=False),
+    Column("field_name", String(100), nullable=False),
+    Column("field_type", String(50), nullable=False),
+    Column("raw_value", Text),
+    Column("normalized_value", JSON),
+    Column("page_number", Integer, nullable=False, server_default="1"),
+    Column("bounding_box", JSON),
+    Column("rotation", Integer, nullable=False, server_default="0"),
+    Column("confidence", Float, nullable=False, server_default="1.0"),
+    Column("uncertainty", String(50), nullable=False, server_default="LOW"),
+    Column("method", String(50), nullable=False, server_default="DIGITAL_TEXT"),
+    Column("is_current", Boolean, nullable=False, server_default="true"),
+    time_created(),
+)
+
+field_corrections = Table(
+    "field_corrections",
+    metadata,
+    pk(),
+    institution(),
+    Column("application_id", String(36)),
+    Column("field_id", String(36), ForeignKey("extracted_fields.id"), nullable=False),
+    Column("prior_value", JSON),
+    Column("corrected_value", JSON, nullable=False),
+    Column("reason", Text, nullable=False),
+    Column("corrected_by", String(36), nullable=False),
+    Column("authority", String(80), nullable=False),
+    time_created(),
+)
+
+fact_sets = Table(
+    "fact_sets",
+    metadata,
+    pk(),
+    institution(),
+    Column("application_id", String(36), ForeignKey("applications.id"), nullable=False),
+    Column("version", Integer, nullable=False, server_default="1"),
+    Column("canonical_hash", String(64), nullable=False),
+    Column(
+        "canonicalization_version",
+        String(40),
+        nullable=False,
+        server_default="jcs-and-project-types-v1",
+    ),
+    Column("is_frozen", Boolean, nullable=False, server_default="true"),
+    time_created(),
+    UniqueConstraint("application_id", "version", name="uq_fact_set_application_version"),
+)
+
+fact_set_members = Table(
+    "fact_set_members",
+    metadata,
+    pk(),
+    Column("fact_set_id", String(36), ForeignKey("fact_sets.id"), nullable=False),
+    institution(),
+    Column("application_id", String(36), nullable=False),
+    Column("field_id", String(36), ForeignKey("extracted_fields.id"), nullable=False),
+    Column("field_name", String(100), nullable=False),
+    Column("normalized_value", JSON, nullable=False),
+    time_created(),
+)
+
+claims = Table(
+    "claims",
+    metadata,
+    pk(),
+    institution(),
+    Column("application_id", String(36), ForeignKey("applications.id"), nullable=False),
+    Column("subject", String(120), nullable=False),
+    Column("predicate", String(100), nullable=False),
+    Column("period_start", String(40)),
+    Column("period_end", String(40)),
+    Column("declared_value", JSON),
+    Column("reconciled_value", JSON),
+    Column("status", String(40), nullable=False, server_default="UNVERIFIED"),
+    time_created(),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
+
+claim_evidence_links = Table(
+    "claim_evidence_links",
+    metadata,
+    pk(),
+    Column("claim_id", String(36), ForeignKey("claims.id"), nullable=False),
+    institution(),
+    Column("application_id", String(36), nullable=False),
+    Column("evidence_version_id", String(36), ForeignKey("evidence_versions.id"), nullable=False),
+    Column("field_id", String(36)),
+    Column("relationship", String(30), nullable=False, server_default="SUPPORTS"),
+    Column("rationale", Text),
+    time_created(),
+)
+
 for table in (
     applications,
     assignments,
@@ -397,6 +514,13 @@ for table in (
     derivatives,
     outbox,
     operations,
+    extraction_runs,
+    extracted_fields,
+    field_corrections,
+    fact_sets,
+    fact_set_members,
+    claims,
+    claim_evidence_links,
 ):
     Index(f"ix_{table.name}_owner_time", table.c.institution_id, table.c.created_at, table.c.id)
 Index("ix_outbox_delivery", outbox.c.delivered_at, outbox.c.available_at, outbox.c.lease_until)
@@ -404,3 +528,15 @@ Index("ix_evidence_clean_object", evidence.c.clean_key, evidence.c.clean_version
 Index("ix_derivative_object", derivatives.c.object_key, derivatives.c.object_version)
 Index("ix_operations_institution_status", operations.c.institution_id, operations.c.status)
 Index("ix_operations_status_queue", operations.c.status, operations.c.task_queue)
+Index(
+    "ix_extraction_runs_evidence", extraction_runs.c.evidence_version_id, extraction_runs.c.status
+)
+Index("ix_extracted_fields_run", extracted_fields.c.run_id, extracted_fields.c.field_name)
+Index(
+    "ix_extracted_fields_evidence",
+    extracted_fields.c.evidence_version_id,
+    extracted_fields.c.field_name,
+)
+Index("ix_fact_sets_application", fact_sets.c.application_id, fact_sets.c.version)
+Index("ix_claims_application", claims.c.application_id, claims.c.subject, claims.c.predicate)
+Index("ix_claim_evidence_links_claim", claim_evidence_links.c.claim_id)

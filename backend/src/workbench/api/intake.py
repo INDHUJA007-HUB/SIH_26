@@ -15,16 +15,18 @@ from starlette.types import Receive, Scope, Send
 from workbench.adapters import tables as t
 from workbench.adapters.application_service import ApplicationService
 from workbench.adapters.auth import JWTVerifier
+from workbench.adapters.claims_service import ClaimsService
 from workbench.adapters.delivery_service import DeliveryService
 from workbench.adapters.domain_store import DomainStore, row
 from workbench.adapters.evidence_service import EvidenceService
+from workbench.adapters.extraction_service import ExtractionService
 from workbench.adapters.identity_service import IdentityService
 from workbench.adapters.object_storage import ObjectStorage
 from workbench.adapters.operations_service import OperationsService
 from workbench.contracts.intake import Principal
 from workbench.platform.config import Settings
 from workbench.platform.database import build_engine
-from workbench.platform.errors import AuthenticationRequired
+from workbench.platform.errors import AuthenticationRequired, NotFoundError
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -80,6 +82,13 @@ class UploadBody(StrictBody):
 
 class CompleteBody(StrictBody):
     version_id: str | None = Field(default=None, min_length=1, max_length=200)
+
+
+class CorrectionBody(StrictBody):
+    field_id: str = Field(pattern=r"^[0-9a-f-]{36}$")
+    corrected_value: dict[str, Any]
+    reason: str = Field(min_length=5, max_length=500)
+    authority: str = Field(default="STATUTORY_REVIEWER", min_length=2, max_length=80)
 
 
 class AssignmentBody(StrictBody):
@@ -138,6 +147,8 @@ def register_intake_api(app: FastAPI, settings: Settings) -> DomainStore:
     identity, applications = IdentityService(store), ApplicationService(store)
     storage = ObjectStorage(settings)
     evidence, delivery = EvidenceService(store, storage, settings), DeliveryService(store, storage)
+    extraction_service = ExtractionService(store.engine)
+    claims_service = ClaimsService(store.engine)
     verifier = JWTVerifier(settings)
     router = APIRouter(prefix="/api/v1")
 
@@ -501,6 +512,92 @@ def register_intake_api(app: FastAPI, settings: Settings) -> DomainStore:
             return OperationsService.cancel_operation(
                 connection, operation_id, reason or "Cancelled by operator"
             )
+
+    @router.get("/evidence/{version_id}/fields", tags=["extraction"])
+    def get_evidence_fields_endpoint(
+        version_id: str,
+        actor: Principal = Depends(principal),
+    ) -> Any:
+        with store.transaction(actor) as connection:
+            ev = (
+                connection.execute(select(t.evidence).where(t.evidence.c.id == version_id))
+                .mappings()
+                .first()
+            )
+            if not ev:
+                raise NotFoundError("Evidence version")
+            if ev["application_id"]:
+                store.application(connection, ev["application_id"])
+            return extraction_service.get_evidence_fields(
+                ev["institution_id"], version_id, conn=connection
+            )
+
+    @router.post("/evidence/{version_id}/corrections", tags=["extraction"])
+    def create_field_correction_endpoint(
+        version_id: str,
+        body: CorrectionBody,
+        actor: Principal = Depends(principal),
+    ) -> Any:
+        with store.transaction(actor) as connection:
+            ev = (
+                connection.execute(select(t.evidence).where(t.evidence.c.id == version_id))
+                .mappings()
+                .first()
+            )
+            if not ev:
+                raise NotFoundError("Evidence version")
+            if ev["application_id"]:
+                store.application(connection, ev["application_id"])
+
+            actor_id = (
+                connection.execute(
+                    select(t.actors.c.id).where(
+                        t.actors.c.issuer == actor.issuer,
+                        t.actors.c.subject == actor.subject,
+                    )
+                ).scalar()
+                or actor.subject
+            )
+
+            return extraction_service.record_correction(
+                institution_id=ev["institution_id"],
+                evidence_version_id=version_id,
+                field_id=body.field_id,
+                corrected_value=body.corrected_value,
+                reason=body.reason,
+                corrected_by=str(actor_id),
+                authority=body.authority,
+                conn=connection,
+            )
+
+    @router.get("/fact-sets/{id}", tags=["extraction"])
+    def get_fact_set_endpoint(
+        id: str,
+        actor: Principal = Depends(principal),
+    ) -> Any:
+        with store.transaction(actor) as connection:
+            fs = extraction_service.get_fact_set(id, conn=connection)
+            if not fs:
+                raise NotFoundError("Fact set")
+            if fs.get("application_id"):
+                store.application(connection, fs["application_id"])
+            return fs
+
+    @router.get("/claims/{id}/provenance", tags=["claims"])
+    def get_claim_provenance_endpoint(
+        id: str,
+        actor: Principal = Depends(principal),
+    ) -> Any:
+        with store.transaction(actor) as connection:
+            cl = connection.execute(select(t.claims).where(t.claims.c.id == id)).mappings().first()
+            if not cl:
+                raise NotFoundError("Claim")
+            if cl.get("application_id"):
+                store.application(connection, cl["application_id"])
+            prov = claims_service.get_claim_provenance(cl["institution_id"], id, conn=connection)
+            if not prov:
+                raise NotFoundError("Claim provenance")
+            return prov
 
     app.include_router(router)
     app.state.domain_store = store

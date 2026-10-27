@@ -67,11 +67,14 @@ def anyio_backend():
 
 @pytest.mark.anyio
 async def test_evidence_screening_workflow_determinism_and_replay():
-    async with await WorkflowEnvironment.start_time_skipping() as env, Worker(
-        env.client,
-        task_queue=TaskQueue.SCAN.value,
-        workflows=[EvidenceScreeningWorkflow],
-        activities=[mock_screen_evidence],
+    async with (
+        await WorkflowEnvironment.start_time_skipping() as env,
+        Worker(
+            env.client,
+            task_queue=TaskQueue.SCAN.value,
+            workflows=[EvidenceScreeningWorkflow],
+            activities=[mock_screen_evidence],
+        ),
     ):
         handle = await env.client.start_workflow(
             EvidenceScreeningWorkflow.run,
@@ -96,11 +99,14 @@ async def test_evidence_screening_workflow_determinism_and_replay():
 
 @pytest.mark.anyio
 async def test_document_extraction_workflow_replay():
-    async with await WorkflowEnvironment.start_time_skipping() as env, Worker(
-        env.client,
-        task_queue=TaskQueue.DOCUMENT.value,
-        workflows=[DocumentExtractionWorkflow],
-        activities=[mock_extract_facts],
+    async with (
+        await WorkflowEnvironment.start_time_skipping() as env,
+        Worker(
+            env.client,
+            task_queue=TaskQueue.DOCUMENT.value,
+            workflows=[DocumentExtractionWorkflow],
+            activities=[mock_extract_facts],
+        ),
     ):
         handle = await env.client.start_workflow(
             DocumentExtractionWorkflow.run,
@@ -124,11 +130,14 @@ async def test_document_extraction_workflow_replay():
 
 @pytest.mark.anyio
 async def test_source_verification_workflow_replay():
-    async with await WorkflowEnvironment.start_time_skipping() as env, Worker(
-        env.client,
-        task_queue=TaskQueue.CONNECTOR.value,
-        workflows=[SourceVerificationWorkflow],
-        activities=[mock_verify_source],
+    async with (
+        await WorkflowEnvironment.start_time_skipping() as env,
+        Worker(
+            env.client,
+            task_queue=TaskQueue.CONNECTOR.value,
+            workflows=[SourceVerificationWorkflow],
+            activities=[mock_verify_source],
+        ),
     ):
         handle = await env.client.start_workflow(
             SourceVerificationWorkflow.run,
@@ -152,11 +161,14 @@ async def test_source_verification_workflow_replay():
 
 @pytest.mark.anyio
 async def test_rule_evaluation_workflow_replay():
-    async with await WorkflowEnvironment.start_time_skipping() as env, Worker(
-        env.client,
-        task_queue=TaskQueue.EVALUATION.value,
-        workflows=[RuleEvaluationWorkflow],
-        activities=[mock_evaluate_rules],
+    async with (
+        await WorkflowEnvironment.start_time_skipping() as env,
+        Worker(
+            env.client,
+            task_queue=TaskQueue.EVALUATION.value,
+            workflows=[RuleEvaluationWorkflow],
+            activities=[mock_evaluate_rules],
+        ),
     ):
         handle = await env.client.start_workflow(
             RuleEvaluationWorkflow.run,
@@ -180,11 +192,14 @@ async def test_rule_evaluation_workflow_replay():
 
 @pytest.mark.anyio
 async def test_report_generation_workflow_replay():
-    async with await WorkflowEnvironment.start_time_skipping() as env, Worker(
-        env.client,
-        task_queue=TaskQueue.REPORTING.value,
-        workflows=[ReportGenerationWorkflow],
-        activities=[mock_generate_report],
+    async with (
+        await WorkflowEnvironment.start_time_skipping() as env,
+        Worker(
+            env.client,
+            task_queue=TaskQueue.REPORTING.value,
+            workflows=[ReportGenerationWorkflow],
+            activities=[mock_generate_report],
+        ),
     ):
         handle = await env.client.start_workflow(
             ReportGenerationWorkflow.run,
@@ -208,11 +223,14 @@ async def test_report_generation_workflow_replay():
 
 @pytest.mark.anyio
 async def test_media_analysis_workflow_replay():
-    async with await WorkflowEnvironment.start_time_skipping() as env, Worker(
-        env.client,
-        task_queue=TaskQueue.MEDIA.value,
-        workflows=[MediaAnalysisWorkflow],
-        activities=[mock_analyze_media],
+    async with (
+        await WorkflowEnvironment.start_time_skipping() as env,
+        Worker(
+            env.client,
+            task_queue=TaskQueue.MEDIA.value,
+            workflows=[MediaAnalysisWorkflow],
+            activities=[mock_analyze_media],
+        ),
     ):
         handle = await env.client.start_workflow(
             MediaAnalysisWorkflow.run,
@@ -236,11 +254,14 @@ async def test_media_analysis_workflow_replay():
 
 @pytest.mark.anyio
 async def test_retention_purge_workflow_replay():
-    async with await WorkflowEnvironment.start_time_skipping() as env, Worker(
-        env.client,
-        task_queue=TaskQueue.RETENTION.value,
-        workflows=[RetentionPurgeWorkflow],
-        activities=[mock_purge_retention],
+    async with (
+        await WorkflowEnvironment.start_time_skipping() as env,
+        Worker(
+            env.client,
+            task_queue=TaskQueue.RETENTION.value,
+            workflows=[RetentionPurgeWorkflow],
+            activities=[mock_purge_retention],
+        ),
     ):
         handle = await env.client.start_workflow(
             RetentionPurgeWorkflow.run,
@@ -262,11 +283,14 @@ async def test_retention_purge_workflow_replay():
 
 @pytest.mark.anyio
 async def test_response_window_timer_signals_and_replay():
-    async with await WorkflowEnvironment.start_time_skipping() as env, Worker(
-        env.client,
-        task_queue=TaskQueue.COORDINATION.value,
-        workflows=[ResponseWindowTimerWorkflow],
-        activities=[mock_wait_timer],
+    async with (
+        await WorkflowEnvironment.start_time_skipping() as env,
+        Worker(
+            env.client,
+            task_queue=TaskQueue.COORDINATION.value,
+            workflows=[ResponseWindowTimerWorkflow],
+            activities=[mock_wait_timer],
+        ),
     ):
         handle = await env.client.start_workflow(
             ResponseWindowTimerWorkflow.run,

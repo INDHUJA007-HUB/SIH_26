@@ -19,3 +19,8 @@ class AuthenticationRequired(ApplicationError):
 class AccessDenied(ApplicationError):
     def __init__(self) -> None:
         super().__init__("ACCESS_DENIED", "Access is not permitted", 403)
+
+
+class NotFoundError(ApplicationError):
+    def __init__(self, resource: str = "Resource") -> None:
+        super().__init__("NOT_FOUND", f"{resource} not found", 404)
