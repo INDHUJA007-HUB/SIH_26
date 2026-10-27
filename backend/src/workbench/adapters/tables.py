@@ -504,6 +504,180 @@ claim_evidence_links = Table(
     time_created(),
 )
 
+rule_sources = Table(
+    "rule_sources",
+    metadata,
+    pk(),
+    Column("source_code", String(50), nullable=False, unique=True),
+    Column("title", String(200), nullable=False),
+    Column("sha256", String(64), nullable=False),
+    Column("bytes_size", BigInteger),
+    Column("status", String(80), nullable=False),
+    Column("publisher_reference", String(500)),
+    Column("pdf_pages", Integer),
+    Column("checked_on", String(40)),
+    time_created(),
+)
+
+rule_interpretations = Table(
+    "rule_interpretations",
+    metadata,
+    pk(),
+    Column("rule_id", String(100), nullable=False, unique=True),
+    Column("clause", String(100)),
+    Column("source_id", String(36)),
+    Column(
+        "interpretation_state",
+        String(50),
+        nullable=False,
+        server_default="REQUIRES_AUTHORIZED_REVIEW",
+    ),
+    Column("content_status", String(50), nullable=False, server_default="V-U"),
+    Column("summary", JSON),
+    Column("notes", Text),
+    time_created(),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
+
+rule_versions = Table(
+    "rule_versions",
+    metadata,
+    pk(),
+    Column("rule_id", String(100), nullable=False),
+    Column("version", Integer, nullable=False, server_default="1"),
+    Column("content_hash", String(64), nullable=False),
+    Column("source_id", String(36)),
+    Column("clause", String(100)),
+    Column("printed_page", Integer),
+    Column("pdf_page", Integer),
+    Column("page_offset", Integer, nullable=False, server_default="16"),
+    Column("applicability", JSON),
+    Column("parameters", JSON),
+    Column("dsl_expression", JSON),
+    Column("status", String(50), nullable=False, server_default="DRAFT"),
+    Column("production_enabled", Boolean, nullable=False, server_default="false"),
+    Column("adverse_action_allowed", Boolean, nullable=False, server_default="false"),
+    time_created(),
+    UniqueConstraint("rule_id", "version", name="uq_rule_version_rule_ver"),
+)
+
+rule_releases = Table(
+    "rule_releases",
+    metadata,
+    pk(),
+    Column("release_code", String(50), nullable=False, unique=True),
+    Column("version", Integer, nullable=False, server_default="1"),
+    Column("academic_cycle", String(50), nullable=False),
+    Column("content_hash", String(64), nullable=False),
+    Column("status", String(50), nullable=False, server_default="DRAFT"),
+    Column("approved_by", String(36)),
+    Column("is_active", Boolean, nullable=False, server_default="false"),
+    time_created(),
+)
+
+release_members = Table(
+    "release_members",
+    metadata,
+    pk(),
+    Column("release_id", String(36), ForeignKey("rule_releases.id"), nullable=False),
+    Column("rule_version_id", String(36), ForeignKey("rule_versions.id"), nullable=False),
+    Column("rule_id", String(100), nullable=False),
+    time_created(),
+    UniqueConstraint("release_id", "rule_id", name="uq_release_rule"),
+)
+
+evaluation_runs = Table(
+    "evaluation_runs",
+    metadata,
+    pk(),
+    institution(),
+    Column("application_id", String(36), ForeignKey("applications.id"), nullable=False),
+    Column("application_revision_id", String(36)),
+    Column("rule_release_id", String(36)),
+    Column("fact_set_id", String(36)),
+    Column("manifest_hash", String(64), nullable=False),
+    Column("evaluation_as_of", String(40), nullable=False),
+    Column("execution_mode", String(40), nullable=False, server_default="DEMONSTRATION"),
+    Column("completeness_status", String(40), nullable=False, server_default="COMPLETE"),
+    Column("compliance_status", String(40), nullable=False, server_default="PASS"),
+    Column(
+        "source_verification_status",
+        String(40),
+        nullable=False,
+        server_default="VERIFICATION_PENDING",
+    ),
+    Column(
+        "forensic_concern_status",
+        String(40),
+        nullable=False,
+        server_default="NONE_OBSERVED",
+    ),
+    Column(
+        "document_validity_status",
+        String(40),
+        nullable=False,
+        server_default="VALID_ON_REVIEW_DATE",
+    ),
+    Column("case_workflow_status", String(40), nullable=False, server_default="SCREENED"),
+    Column("adverse_action_allowed", Boolean, nullable=False, server_default="false"),
+    Column("manifest", JSON),
+    time_created(),
+)
+
+run_inputs = Table(
+    "run_inputs",
+    metadata,
+    pk(),
+    Column("run_id", String(36), ForeignKey("evaluation_runs.id"), nullable=False),
+    institution(),
+    Column("application_id", String(36), nullable=False),
+    Column("input_type", String(50), nullable=False),
+    Column("input_id", String(36), nullable=False),
+    Column("content_hash", String(64), nullable=False),
+    time_created(),
+)
+
+requirement_outcomes = Table(
+    "requirement_outcomes",
+    metadata,
+    pk(),
+    Column("run_id", String(36), ForeignKey("evaluation_runs.id"), nullable=False),
+    institution(),
+    Column("application_id", String(36), nullable=False),
+    Column("rule_id", String(100), nullable=False),
+    Column("requirement_name", String(150), nullable=False),
+    Column("outcome", String(40), nullable=False, server_default="PASS"),
+    Column("rationale", Text),
+    Column("observed_value", JSON),
+    Column("expected_value", JSON),
+    Column("calculation_trace", JSON),
+    time_created(),
+)
+
+findings = Table(
+    "findings",
+    metadata,
+    pk(),
+    Column("run_id", String(36), ForeignKey("evaluation_runs.id"), nullable=False),
+    institution(),
+    Column("application_id", String(36), nullable=False),
+    Column("rule_id", String(100), nullable=False),
+    Column("semantic_key", String(150), nullable=False),
+    Column("dimension", String(40), nullable=False, server_default="COMPLIANCE"),
+    Column("severity", String(40), nullable=False, server_default="DEFICIENCY"),
+    Column("status", String(40), nullable=False, server_default="OPEN"),
+    Column("title", String(250), nullable=False),
+    Column("description", Text),
+    Column("officer_explanation", Text),
+    Column("applicant_explanation", Text),
+    Column("calculation_trace", JSON),
+    Column("supporting_evidence", JSON),
+    Column("contradicting_evidence", JSON),
+    Column("unknown_reason", Text),
+    Column("adverse_action_allowed", Boolean, nullable=False, server_default="false"),
+    time_created(),
+)
+
 for table in (
     applications,
     assignments,
@@ -521,6 +695,10 @@ for table in (
     fact_set_members,
     claims,
     claim_evidence_links,
+    evaluation_runs,
+    run_inputs,
+    requirement_outcomes,
+    findings,
 ):
     Index(f"ix_{table.name}_owner_time", table.c.institution_id, table.c.created_at, table.c.id)
 Index("ix_outbox_delivery", outbox.c.delivered_at, outbox.c.available_at, outbox.c.lease_until)
@@ -540,3 +718,16 @@ Index(
 Index("ix_fact_sets_application", fact_sets.c.application_id, fact_sets.c.version)
 Index("ix_claims_application", claims.c.application_id, claims.c.subject, claims.c.predicate)
 Index("ix_claim_evidence_links_claim", claim_evidence_links.c.claim_id)
+Index("ix_rule_sources_code", rule_sources.c.source_code)
+Index("ix_rule_interpretations_rule", rule_interpretations.c.rule_id)
+Index("ix_rule_versions_rule_ver", rule_versions.c.rule_id, rule_versions.c.version)
+Index("ix_rule_releases_code", rule_releases.c.release_code)
+Index("ix_release_members_release", release_members.c.release_id)
+Index(
+    "ix_evaluation_runs_app",
+    evaluation_runs.c.application_id,
+    evaluation_runs.c.institution_id,
+)
+Index("ix_run_inputs_run", run_inputs.c.run_id)
+Index("ix_req_outcomes_run", requirement_outcomes.c.run_id, requirement_outcomes.c.rule_id)
+Index("ix_findings_run_semantic", findings.c.run_id, findings.c.semantic_key)

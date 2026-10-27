@@ -18,6 +18,7 @@ from workbench.adapters.auth import JWTVerifier
 from workbench.adapters.claims_service import ClaimsService
 from workbench.adapters.delivery_service import DeliveryService
 from workbench.adapters.domain_store import DomainStore, row
+from workbench.adapters.evaluation_service import EvaluationService
 from workbench.adapters.evidence_service import EvidenceService
 from workbench.adapters.extraction_service import ExtractionService
 from workbench.adapters.identity_service import IdentityService
@@ -91,6 +92,11 @@ class CorrectionBody(StrictBody):
     authority: str = Field(default="STATUTORY_REVIEWER", min_length=2, max_length=80)
 
 
+class EvaluationCreateBody(StrictBody):
+    evaluation_as_of: str | None = None
+    execution_mode: str = "DEMONSTRATION"
+
+
 class AssignmentBody(StrictBody):
     institution_id: str = Field(pattern=r"^[0-9a-f-]{36}$")
     application_id: str | None = Field(default=None, pattern=r"^[0-9a-f-]{36}$")
@@ -149,6 +155,7 @@ def register_intake_api(app: FastAPI, settings: Settings) -> DomainStore:
     evidence, delivery = EvidenceService(store, storage, settings), DeliveryService(store, storage)
     extraction_service = ExtractionService(store.engine)
     claims_service = ClaimsService(store.engine)
+    evaluation_service = EvaluationService(store.engine)
     verifier = JWTVerifier(settings)
     router = APIRouter(prefix="/api/v1")
 
@@ -598,6 +605,60 @@ def register_intake_api(app: FastAPI, settings: Settings) -> DomainStore:
             if not prov:
                 raise NotFoundError("Claim provenance")
             return prov
+
+    @router.post("/applications/{id}/evaluations", tags=["evaluation"])
+    def create_application_evaluation(
+        id: str,
+        body: EvaluationCreateBody | None = None,
+        actor: Principal = Depends(principal),
+    ) -> Any:
+        with store.transaction(actor) as connection:
+            app = store.application(connection, id)
+            as_of = body.evaluation_as_of if body and body.evaluation_as_of else "2026-10-26"
+            mode = body.execution_mode if body and body.execution_mode else "DEMONSTRATION"
+            return evaluation_service.run_evaluation(
+                institution_id=app["institution_id"],
+                application_id=id,
+                evaluation_as_of=as_of,
+                execution_mode=mode,
+                conn=connection,
+            )
+
+    @router.get("/evaluations/{id}", tags=["evaluation"])
+    def get_evaluation_endpoint(
+        id: str,
+        actor: Principal = Depends(principal),
+    ) -> Any:
+        with store.transaction(actor) as connection:
+            ev = evaluation_service.get_evaluation(id, conn=connection)
+            store.application(connection, ev["application_id"])
+            return ev
+
+    @router.get("/evaluations/{id}/findings", tags=["evaluation"])
+    def get_evaluation_findings_endpoint(
+        id: str,
+        actor: Principal = Depends(principal),
+    ) -> Any:
+        with store.transaction(actor) as connection:
+            ev = evaluation_service.get_evaluation(id, conn=connection)
+            store.application(connection, ev["application_id"])
+            return evaluation_service.get_findings_for_run(id, conn=connection)
+
+    @router.get("/findings/{id}/evidence", tags=["evaluation"])
+    def get_finding_evidence_endpoint(
+        id: str,
+        actor: Principal = Depends(principal),
+    ) -> Any:
+        with store.transaction(actor) as connection:
+            finding_row = (
+                connection.execute(select(t.findings).where(t.findings.c.id == id))
+                .mappings()
+                .first()
+            )
+            if not finding_row:
+                raise NotFoundError("Finding")
+            store.application(connection, finding_row["application_id"])
+            return evaluation_service.get_finding_evidence(id, conn=connection)
 
     app.include_router(router)
     app.state.domain_store = store
