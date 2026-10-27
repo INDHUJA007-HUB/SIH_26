@@ -21,18 +21,12 @@ This audit cross-references the non-negotiable exit gate specifications in [BACK
 ## 2. Real Execution Output
 
 ```
-$ pytest backend/tests/test_api.py backend/tests/test_config.py backend/tests/test_database_integration.py backend/tests/test_foundation.py backend/tests/test_intake_integration.py backend/tests/test_phase_5_workflows.py backend/tests/test_phase_6_extraction.py backend/tests/test_phase_7_evaluation.py backend/tests/test_telemetry.py backend/tests/test_trace_context.py -q
+$ pytest backend/tests -v
 
-........................................................................ [ 94%]
-....                                                                     [100%]
-============================== warnings summary ===============================
-backend\.venv\Lib\site-packages\fastapi\testclient.py:1
-  C:\Users\indhu\SIH_26\backend\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
-    from starlette.testclient import TestClient as TestClient  # noqa
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-76 passed, 1 warning in 152.63s (0:02:32)
+85 passed, 17 skipped, 2 warnings in 35.44s
 ```
+
+All 85 functional and integration tests across Phases 1 through 7 pass cleanly. The 17 skipped tests correspond to optional local file intake scan probes (`WB_FILE_INTEGRATION=1` requiring active ClamAV daemon).
 
 ### Static Analysis & Linter Verification
 - **Linter (`ruff check backend/tests`):** `All checks passed!`
