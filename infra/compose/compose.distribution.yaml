@@ -1,0 +1,31 @@
+# Use with compose.yaml to consume published images instead of building locally.
+services:
+  migrate:
+    image: ${SIH_RUNTIME_IMAGE:-ghcr.io/indhuja007-hub/sih_26:latest}
+    build: !reset null
+    pull_policy: always
+  api:
+    image: ${SIH_RUNTIME_IMAGE:-ghcr.io/indhuja007-hub/sih_26:latest}
+    pull_policy: never
+  worker:
+    image: ${SIH_RUNTIME_IMAGE:-ghcr.io/indhuja007-hub/sih_26:latest}
+    pull_policy: never
+  intake-worker:
+    image: ${SIH_RUNTIME_IMAGE:-ghcr.io/indhuja007-hub/sih_26:latest}
+    pull_policy: never
+  outbox-relay:
+    image: ${SIH_RUNTIME_IMAGE:-ghcr.io/indhuja007-hub/sih_26:latest}
+    pull_policy: never
+  scan-worker:
+    image: ${SIH_RUNTIME_IMAGE:-ghcr.io/indhuja007-hub/sih_26:latest}
+    pull_policy: never
+  reconcile-worker:
+    image: ${SIH_RUNTIME_IMAGE:-ghcr.io/indhuja007-hub/sih_26:latest}
+    pull_policy: never
+  local-seed:
+    image: ${SIH_RUNTIME_IMAGE:-ghcr.io/indhuja007-hub/sih_26:latest}
+    pull_policy: never
+  parser:
+    image: ${SIH_PARSER_IMAGE:-ghcr.io/indhuja007-hub/sih_26-parser:latest}
+    build: !reset null
+    pull_policy: always

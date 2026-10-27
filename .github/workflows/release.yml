@@ -1,0 +1,73 @@
+name: Publish container images
+on:
+  push:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - backend/**
+      - output/AICTE_PS26261_Rule_Evidence_Register.json
+      - .github/workflows/release.yml
+  workflow_dispatch: {}
+concurrency:
+  group: container-release-${{ github.ref }}
+  cancel-in-progress: false
+permissions: {contents: read}
+jobs:
+  publish:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {target: runtime, suffix: ''}
+          - {target: parser, suffix: '-parser'}
+    runs-on: ubuntu-latest
+    permissions: {contents: read, packages: write, id-token: write, attestations: write}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - id: image
+        env:
+          PACKAGE_SUFFIX: ${{ matrix.suffix }}
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "name=ghcr.io/${owner}/sih_26${PACKAGE_SUFFIX}" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: Dockerfile
+          target: ${{ matrix.target }}
+          load: true
+          tags: sih-workbench:${{ matrix.target }}-release-check
+      - uses: aquasecurity/trivy-action@8f28faec26515256b6d22074d1d2a8986f4cbd87 # 0.33.1
+        with:
+          image-ref: sih-workbench:${{ matrix.target }}-release-check
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: false
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        id: build
+        with:
+          context: .
+          file: Dockerfile
+          target: ${{ matrix.target }}
+          push: true
+          tags: |
+            ${{ steps.image.outputs.name }}:latest
+            ${{ steps.image.outputs.name }}:${{ github.sha }}
+          provenance: mode=max
+          sbom: true
+      - uses: sigstore/cosign-installer@f713795cb21599bc4e5c4b58cbad1da852d7eeb9 # v3
+      - env:
+          IMAGE: ${{ steps.image.outputs.name }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes "$IMAGE@$DIGEST"
+      - uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45 # v3
+        with:
+          subject-name: ${{ steps.image.outputs.name }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true

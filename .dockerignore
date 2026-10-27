@@ -1,0 +1,12 @@
+.git
+.local
+.tools
+.env
+**/.venv
+**/__pycache__
+artifacts
+sources
+research
+output/*
+!output/AICTE_PS26261_Rule_Evidence_Register.json
+frontend

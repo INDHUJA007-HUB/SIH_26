@@ -1,9 +1,16 @@
-# SIH 2026 — AICTE PS26261 Research Package
+# SIH 2026 — AICTE Evidence and Compliance Workbench
 
 This repository contains the consolidated research and solution specification for **AICTE PS26261**, focused on evidence-led application validation, document authentication, regulatory compliance, rectification, auditability, and officer review.
 
 ## Start here
 
+- [Backend implementation plan](docs/BACKEND_IMPLEMENTATION_PLAN.md) — complete architecture and phased delivery specification.
+- [Development setup](docs/development/GETTING_STARTED.md) — start and verify the backend and local stack.
+- [Phase 2–4 implementation](docs/development/PHASE_2_4_IMPLEMENTATION.md) — persisted permissions, immutable submissions, quarantine scanning, delivery and operating procedures.
+- [Phase 2–4 verification](docs/development/PHASE_2_4_VERIFICATION.md) — executed acceptance checks and remaining deployment gates.
+- [Intake API example](docs/api/intake-example.md) — draft → upload → scan → submit → inspect history.
+- [Phase 0 baseline](docs/phase-0/README.md) — requirements, architecture decisions, policy issues, threat model, backlog and evaluation plan.
+- [Phase 0–1 verification](docs/development/PHASE_0_1_VERIFICATION.md) — executed checks, evidence and remaining external gates.
 - [`output/AICTE_PS26261_Revised_Solution_Context.pdf`](output/AICTE_PS26261_Revised_Solution_Context.pdf) — formatted 28-page research report.
 - [`output/AICTE_PS26261_Revised_Solution_Context.md`](output/AICTE_PS26261_Revised_Solution_Context.md) — editable report source.
 - [`output/AICTE_PS26261_Source_Register.json`](output/AICTE_PS26261_Source_Register.json) — source URLs, provenance, retrieval details, pinned competitor revisions, and hashes.
@@ -12,10 +19,35 @@ This repository contains the consolidated research and solution specification fo
 ## Repository structure
 
 ```text
+backend/   FastAPI application, persisted identity/intake domain, migrations, workers and tests
+infra/     Digest-pinned local platform and non-root backend container
+scripts/   Repeatable Windows and Unix bootstrap/start/check/stop
+docs/      Implementation plan, baseline decisions and developer/operator guides
+benchmarks/ Evaluation manifest schema; no real applicant data
 output/    Final report and machine-readable evidence registers
 sources/   Uploaded source material and amendment copies used in the analysis
 research/  Extracted text, pinned competitor evidence, QA records, and report builder
 ```
+
+## Run the complete local platform
+
+The root [`Dockerfile`](Dockerfile) builds two non-root targets: the backend API/workers and the network-isolated evidence parser. The Compose environment adds PostgreSQL, Temporal, development object storage, Keycloak, ClamAV, Mailpit and observability services.
+
+Build from source with Docker plus Python/uv:
+
+```powershell
+.\scripts\dev.ps1 up
+.\scripts\dev.ps1 check
+```
+
+Or use the published images with Docker only after cloning the repository:
+
+```powershell
+.\scripts\container.ps1 up
+.\scripts\container.ps1 check
+```
+
+Linux/macOS users can run `sh scripts/container.sh up`. The API documentation is available at <http://127.0.0.1:8000/docs>. The first startup generates local-only credentials and fixture keys in ignored files. See the [complete container guide](docs/development/GETTING_STARTED.md#docker-only-published-images) before using custom tags or sharing access.
 
 Temporary rendered page images used only for visual QA are intentionally excluded.
 
