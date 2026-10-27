@@ -351,6 +351,35 @@ tasks = Table(
     UniqueConstraint("kind", "resource_id", name="uq_operation_condition"),
 )
 
+operations = Table(
+    "operations",
+    metadata,
+    pk(),
+    institution(),
+    Column("application_id", String(36)),
+    Column("operation_type", String(80), nullable=False),
+    Column("task_queue", String(60), nullable=False),
+    Column("status", String(30), nullable=False),
+    Column("stable_key", String(200), nullable=False),
+    Column("workflow_id", String(120)),
+    Column("input_ref", JSON, nullable=False),
+    Column("result", JSON),
+    Column("error_code", String(80)),
+    Column("error_message", Text),
+    Column("attempts", Integer, nullable=False, server_default="0"),
+    Column("paused", Boolean, nullable=False, server_default="false"),
+    time_created(),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    UniqueConstraint(
+        "institution_id", "operation_type", "stable_key", name="uq_operation_stable_key"
+    ),
+    ForeignKeyConstraint(
+        ["institution_id", "application_id"],
+        ["applications.institution_id", "applications.id"],
+        name="fk_operation_owner",
+    ),
+)
+
 reconciliation_cursors = Table(
     "reconciliation_cursors",
     metadata,
@@ -358,8 +387,20 @@ reconciliation_cursors = Table(
     Column("position", JSON, nullable=False),
 )
 
-for table in (applications, assignments, revisions, slots, uploads, evidence, derivatives, outbox):
+for table in (
+    applications,
+    assignments,
+    revisions,
+    slots,
+    uploads,
+    evidence,
+    derivatives,
+    outbox,
+    operations,
+):
     Index(f"ix_{table.name}_owner_time", table.c.institution_id, table.c.created_at, table.c.id)
 Index("ix_outbox_delivery", outbox.c.delivered_at, outbox.c.available_at, outbox.c.lease_until)
 Index("ix_evidence_clean_object", evidence.c.clean_key, evidence.c.clean_version)
 Index("ix_derivative_object", derivatives.c.object_key, derivatives.c.object_version)
+Index("ix_operations_institution_status", operations.c.institution_id, operations.c.status)
+Index("ix_operations_status_queue", operations.c.status, operations.c.task_queue)

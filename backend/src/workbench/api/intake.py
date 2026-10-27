@@ -20,6 +20,7 @@ from workbench.adapters.domain_store import DomainStore, row
 from workbench.adapters.evidence_service import EvidenceService
 from workbench.adapters.identity_service import IdentityService
 from workbench.adapters.object_storage import ObjectStorage
+from workbench.adapters.operations_service import OperationsService
 from workbench.contracts.intake import Principal
 from workbench.platform.config import Settings
 from workbench.platform.database import build_engine
@@ -459,6 +460,47 @@ def register_intake_api(app: FastAPI, settings: Settings) -> DomainStore:
                     .limit(100)
                 )
             ]
+
+    @router.get("/operations/{operation_id}", tags=["operations"])
+    def get_operation_status(operation_id: str, actor: Principal = Depends(principal)) -> Any:
+        with store.transaction(actor) as connection:
+            return OperationsService.get_operation(connection, operation_id)
+
+    @router.get("/applications/{application_id}/operations", tags=["operations"])
+    def list_application_operations(
+        application_id: str,
+        limit: int = Query(default=50, ge=1, le=100),
+        actor: Principal = Depends(principal),
+    ) -> Any:
+        with store.transaction(actor) as connection:
+            store.application(connection, application_id)
+            return OperationsService.list_operations(connection, application_id, limit)
+
+    @router.post("/operations/{operation_id}/pause", tags=["operations"])
+    def pause_op(operation_id: str, actor: Principal = Depends(principal)) -> Any:
+        with store.transaction(actor) as connection:
+            return OperationsService.pause_operation(connection, operation_id)
+
+    @router.post("/operations/{operation_id}/resume", tags=["operations"])
+    def resume_op(operation_id: str, actor: Principal = Depends(principal)) -> Any:
+        with store.transaction(actor) as connection:
+            return OperationsService.resume_operation(connection, operation_id)
+
+    @router.post("/operations/{operation_id}/retry", tags=["operations"])
+    def retry_op(operation_id: str, actor: Principal = Depends(principal)) -> Any:
+        with store.transaction(actor) as connection:
+            return OperationsService.retry_operation(connection, operation_id)
+
+    @router.post("/operations/{operation_id}/cancel", tags=["operations"])
+    def cancel_op(
+        operation_id: str,
+        reason: str | None = None,
+        actor: Principal = Depends(principal),
+    ) -> Any:
+        with store.transaction(actor) as connection:
+            return OperationsService.cancel_operation(
+                connection, operation_id, reason or "Cancelled by operator"
+            )
 
     app.include_router(router)
     app.state.domain_store = store

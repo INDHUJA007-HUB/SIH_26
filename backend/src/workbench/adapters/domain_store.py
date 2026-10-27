@@ -43,6 +43,11 @@ class DomainStore:
         self.delivery_engine.dispose()
 
     @contextmanager
+    def system_transaction(self) -> Iterator[Connection]:
+        with self.engine.begin() as connection:
+            yield connection
+
+    @contextmanager
     def transaction(self, principal: Principal, *, delivery: bool = False) -> Iterator[Connection]:
         engine = self.delivery_engine if delivery else self.engine
         with engine.begin() as connection:
