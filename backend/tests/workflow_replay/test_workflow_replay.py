@@ -75,6 +75,11 @@ async def test_evidence_screening_workflow_determinism_and_replay():
             workflows=[EvidenceScreeningWorkflow],
             activities=[mock_screen_evidence],
         ),
+        Worker(
+            env.client,
+            task_queue=TaskQueue.DOCUMENT.value,
+            activities=[mock_extract_facts],
+        ),
     ):
         handle = await env.client.start_workflow(
             EvidenceScreeningWorkflow.run,
