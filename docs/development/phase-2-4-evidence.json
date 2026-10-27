@@ -1,0 +1,95 @@
+{
+  "verification_date": "2026-10-27",
+  "scope": "LOCAL_SYNTHETIC_DEVELOPMENT_PHASE_2_4",
+  "tests": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "tests": "65",
+    "time": "193.106",
+    "timestamp": "2026-10-27T20:01:45.411359+05:30",
+    "hostname": "Optimus"
+  },
+  "running_source_matches_working_source": true,
+  "source_files_compared": 66,
+  "source_fingerprint_sha256": "b7922fc9603ff23e3a385be898fc77e3ded3d3a4d9aa3d39defc2a1c567e287b",
+  "migration": "0006_scope_guards",
+  "runtime_database_roles": [
+    {
+      "rolname": "workbench_api",
+      "rolsuper": false,
+      "rolbypassrls": false,
+      "rolcreaterole": false
+    },
+    {
+      "rolname": "workbench_delivery",
+      "rolsuper": false,
+      "rolbypassrls": false,
+      "rolcreaterole": false
+    },
+    {
+      "rolname": "workbench_relay",
+      "rolsuper": false,
+      "rolbypassrls": false,
+      "rolcreaterole": false
+    },
+    {
+      "rolname": "workbench_scanner",
+      "rolsuper": false,
+      "rolbypassrls": false,
+      "rolcreaterole": false
+    },
+    {
+      "rolname": "workbench_worker",
+      "rolsuper": false,
+      "rolbypassrls": false,
+      "rolcreaterole": false
+    }
+  ],
+  "parser_isolation": {
+    "network": "none",
+    "user": "65532:65532",
+    "read_only_root": "true",
+    "capabilities_dropped": "[\"ALL\"]",
+    "memory_bytes": "1073741824",
+    "pids_limit": "64"
+  },
+  "prometheus_targets": {
+    "workbench-api": "UP",
+    "workbench-reconciliation": "UP",
+    "workbench-outbox": "UP",
+    "workbench-scan": "UP"
+  },
+  "demo_audit_chain": {
+    "valid": true,
+    "events": 5,
+    "head_sha256": "4f1237b79040278050cfa5c18712042ce421af5498dc00269105b3ba8808aa56",
+    "format": "postgres-jsonb-text-sha256-v1"
+  },
+  "dependency_packages_audited": 130,
+  "dependency_vulnerabilities": 0,
+  "image_audits": {
+    "runtime": {
+      "image_id": "sha256:d5da20706be9733ad1c1e165e2e95682a420b8e2721f7d21bd967336b22fdf4c",
+      "high_critical_findings": 0
+    },
+    "parser": {
+      "image_id": "sha256:3117bbaf19991b852cec3a52d663525b0c856c9bfe9c19f8beebdfd77f6c5f16",
+      "high_critical_findings": 0
+    }
+  },
+  "live_keycloak_jwks_and_persisted_membership": "PASS",
+  "full_foundation_platform_smoke": "PASS",
+  "cloud_qualification": "NOT_PERFORMED",
+  "official_decisions": false,
+  "artifact_paths": [
+    "artifacts/phase-2-4-tests.xml",
+    "backend/coverage.xml",
+    "artifacts/intake-platform.json",
+    "artifacts/intake-demo.json",
+    "artifacts/dependency-audit-phase-4.json",
+    "artifacts/phase-4-runtime-image.json",
+    "artifacts/phase-4-parser-image.json"
+  ]
+}

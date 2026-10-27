@@ -1,0 +1,3 @@
+# Isolated CPU compatibility environment; deliberately excluded from the API image.
+paddleocr==3.7.0
+paddlepaddle==3.3.1
