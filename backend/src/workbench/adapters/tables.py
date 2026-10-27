@@ -678,6 +678,85 @@ findings = Table(
     time_created(),
 )
 
+historical_records = Table(
+    "historical_records",
+    metadata,
+    pk(),
+    institution(),
+    Column("source", String(50), nullable=False),
+    Column("record_type", String(50), nullable=False),
+    Column("academic_cycle", Integer, nullable=False),
+    Column("payload", JSON, nullable=False),
+    Column("payload_sha256", String(64), nullable=False),
+    Column("external_reference", String(200), nullable=False),
+    Column("valid_from", DateTime(timezone=True), nullable=False),
+    Column("valid_to", DateTime(timezone=True)),
+    Column("simulated", Boolean, nullable=False, server_default="true"),
+    Column("import_lineage", JSON),
+    time_created(),
+)
+
+source_observations = Table(
+    "source_observations",
+    metadata,
+    pk(),
+    institution(),
+    Column("evidence_id", String(36)),
+    Column("evidence_version_id", String(36)),
+    Column("claim_id", String(36)),
+    Column("provider_code", String(50), nullable=False),
+    Column("mode", String(20), nullable=False, server_default="SIMULATED"),
+    Column("simulated", Boolean, nullable=False, server_default="true"),
+    Column("live_success", Boolean, nullable=False, server_default="false"),
+    Column("status", String(50), nullable=False),
+    Column("observed_value", JSON),
+    Column("discrepancy_details", JSON),
+    Column("freshness_timestamp", DateTime(timezone=True), nullable=False),
+    Column("observation_fingerprint", String(64), nullable=False),
+    time_created(),
+)
+
+verification_attempts = Table(
+    "verification_attempts",
+    metadata,
+    pk(),
+    institution(),
+    Column("evidence_id", String(36), nullable=False),
+    Column("evidence_version_id", String(36), nullable=False),
+    Column("claim_id", String(36)),
+    Column("provider_code", String(50), nullable=False),
+    Column("attempt_number", Integer, nullable=False, server_default="1"),
+    Column("status", String(50), nullable=False),
+    Column("error_code", String(50)),
+    Column("error_message", Text),
+    Column("request_fingerprint", String(64), nullable=False),
+    Column("simulated", Boolean, nullable=False, server_default="true"),
+    Column("outage_escalated_to_task", Boolean, nullable=False, server_default="false"),
+    Column("manual_task_id", String(36)),
+    time_created(),
+)
+
+signature_validations = Table(
+    "signature_validations",
+    metadata,
+    pk(),
+    institution(),
+    Column("evidence_id", String(36), nullable=False),
+    Column("evidence_version_id", String(36), nullable=False),
+    Column("validation_type", String(50), nullable=False),
+    Column("status", String(50), nullable=False),
+    Column("signer_identity", String(200)),
+    Column("signer_role", String(50), nullable=False, server_default="UNKNOWN"),
+    Column("signing_time", DateTime(timezone=True)),
+    Column("certificate_sha256", String(64)),
+    Column("qr_payload", JSON),
+    Column("qr_target_url", String(1000)),
+    Column("destination_safe", Boolean, nullable=False, server_default="true"),
+    Column("simulated", Boolean, nullable=False, server_default="true"),
+    Column("details", JSON),
+    time_created(),
+)
+
 for table in (
     applications,
     assignments,
@@ -699,6 +778,10 @@ for table in (
     run_inputs,
     requirement_outcomes,
     findings,
+    historical_records,
+    source_observations,
+    verification_attempts,
+    signature_validations,
 ):
     Index(f"ix_{table.name}_owner_time", table.c.institution_id, table.c.created_at, table.c.id)
 Index("ix_outbox_delivery", outbox.c.delivered_at, outbox.c.available_at, outbox.c.lease_until)
@@ -731,3 +814,13 @@ Index(
 Index("ix_run_inputs_run", run_inputs.c.run_id)
 Index("ix_req_outcomes_run", requirement_outcomes.c.run_id, requirement_outcomes.c.rule_id)
 Index("ix_findings_run_semantic", findings.c.run_id, findings.c.semantic_key)
+Index(
+    "ix_historical_records_cycle",
+    historical_records.c.institution_id,
+    historical_records.c.academic_cycle,
+    historical_records.c.record_type,
+)
+Index("ix_source_observations_claim", source_observations.c.claim_id)
+Index("ix_source_observations_evidence", source_observations.c.evidence_version_id)
+Index("ix_verification_attempts_req", verification_attempts.c.request_fingerprint)
+Index("ix_signature_validations_evidence", signature_validations.c.evidence_version_id)

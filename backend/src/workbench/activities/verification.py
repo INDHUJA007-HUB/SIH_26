@@ -24,7 +24,9 @@ async def verify_source_records_activity(input_dict: dict[str, Any]) -> dict[str
             "request_fingerprint": params.request_fingerprint,
             "freshness_generation": params.freshness_generation,
             "verified": True,
-            "verification_status": "MATCHED",
+            "verification_status": "VERIFIED",
+            "simulated": True,
+            "live_success": False,
             "record_id": f"rec_{params.claim_id}_{params.provider_id}",
         }
 

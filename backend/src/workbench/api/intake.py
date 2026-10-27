@@ -24,6 +24,7 @@ from workbench.adapters.extraction_service import ExtractionService
 from workbench.adapters.identity_service import IdentityService
 from workbench.adapters.object_storage import ObjectStorage
 from workbench.adapters.operations_service import OperationsService
+from workbench.api.verification import create_verification_router
 from workbench.contracts.intake import Principal
 from workbench.platform.config import Settings
 from workbench.platform.database import build_engine
@@ -661,6 +662,7 @@ def register_intake_api(app: FastAPI, settings: Settings) -> DomainStore:
             return evaluation_service.get_finding_evidence(id, conn=connection)
 
     app.include_router(router)
+    app.include_router(create_verification_router(store, principal))
     app.state.domain_store = store
     return store
 

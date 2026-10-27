@@ -221,11 +221,30 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/api/v1/capabilities", tags=["foundation"])
     async def capabilities() -> dict[str, Any]:
+        from workbench.modules.verification.simulator import SimulatorRegistry
+
+        registry = SimulatorRegistry()
+        providers = [
+            {
+                "code": c.code,
+                "name": c.name,
+                "mode": c.mode.value,
+                "live_coverage_available": c.live_coverage_available,
+                "blocked_reason": c.blocked_reason,
+            }
+            for c in registry.list_capabilities()
+        ]
+
         return {
-            "release_scope": "PHASE_4_INTAKE" if config.domain_enabled else "PHASE_1_FOUNDATION",
+            "release_scope": "PHASE_8_VERIFICATION"
+            if config.domain_enabled
+            else "PHASE_1_FOUNDATION",
             "synthetic_only": True,
             "authentication": config.auth_mode,
             "live_source_verification": False,
+            "source_verification_mode": "SIMULATED",
+            "production_connector_status": "BLOCKED_BY_MISSING_ACCESS",
+            "source_verification_providers": providers,
             "regulatory_rule_publication": False,
             "official_decisions": False,
             "fixture_endpoint": True,
