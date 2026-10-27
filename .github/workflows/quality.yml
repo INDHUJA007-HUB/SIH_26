@@ -1,0 +1,78 @@
+name: Foundation quality
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  quality:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run: {working-directory: backend, shell: bash}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+        with: {version: '0.13.4', python-version: '3.12'}
+      - run: uv sync --frozen --group dev --group spikes
+      - run: uv run ruff check src tests tools migrations
+      - run: uv run ruff format --check src tests tools migrations
+      - run: uv run mypy
+      - run: uv run python tools/check_architecture.py
+      - run: uv run python tools/check_repository.py
+      - run: uv run pytest --cov=workbench --cov-report=xml --junitxml=../artifacts/tests.xml
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: quality-${{ matrix.os }}
+          path: |
+            artifacts/
+            backend/coverage.xml
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres@sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b
+        env:
+          POSTGRES_DB: workbench
+          POSTGRES_USER: workbench
+          POSTGRES_PASSWORD: ephemeral-ci-only
+        ports: ['5432:5432']
+        options: --health-cmd 'pg_isready -U workbench' --health-interval 5s --health-retries 20
+    env:
+      WB_DATABASE_URL: postgresql+psycopg://workbench:ephemeral-ci-only@127.0.0.1:5432/workbench
+      WB_INTEGRATION_DATABASE_URL: postgresql+psycopg://workbench:ephemeral-ci-only@127.0.0.1:5432/workbench
+    defaults:
+      run: {working-directory: backend}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff
+        with: {version: '0.13.4', python-version: '3.12'}
+      - run: uv sync --frozen --group dev
+      - run: uv run python -m workbench.tools bootstrap
+      - run: uv run python -m workbench.platform.migrate
+      - run: uv run alembic check
+      - run: uv run python -m workbench.tools seed-db
+      - run: uv run python -m workbench.tools seed-db
+      - run: uv run pytest -m integration
+  compose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff
+        with: {version: '0.13.4', python-version: '3.12'}
+      - run: sh scripts/dev.sh up
+      - run: sh scripts/dev.sh check
+      - run: uv run --project backend python backend/tools/run_intake_tests.py --failure-probes -m integration --junitxml=artifacts/intake-tests.xml
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: intake-acceptance, path: artifacts/intake-tests.xml}
+      - run: uv run --project backend python backend/tools/check_oidc.py
+      - if: always()
+        run: docker compose --env-file .env -f infra/compose/compose.yaml logs --no-color
+      - if: always()
+        run: docker compose --env-file .env -f infra/compose/compose.yaml down

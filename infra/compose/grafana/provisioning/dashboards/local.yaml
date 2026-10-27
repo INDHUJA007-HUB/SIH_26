@@ -1,0 +1,6 @@
+apiVersion: 1
+providers:
+  - name: workbench-foundation
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

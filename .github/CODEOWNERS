@@ -1,0 +1,2 @@
+# Replace role placeholders with actual GitHub teams before enforcing required owners.
+# Regulatory approval is separate from a code review.

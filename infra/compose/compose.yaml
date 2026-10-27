@@ -1,0 +1,309 @@
+name: sih-foundation
+
+x-app-environment: &app-environment
+  WB_ENVIRONMENT: local
+  WB_AUTH_MODE: fixture
+  WB_AUTH_ISSUER: urn:sih:local-fixture
+  WB_AUTH_AUDIENCE: workbench-api
+  WB_FIXTURE_STORE: /local/fixtures.json
+  WB_FIXTURE_PUBLIC_KEY: /local/fixture-public.pem
+  WB_DATABASE_URL: ""
+  WB_DEPENDENCY_CHECKS: "false"
+  WB_TEMPORAL_ADDRESS: temporal:7233
+  WB_S3_ENDPOINT: http://s3:5000
+  WB_S3_PUBLIC_ENDPOINT: http://127.0.0.1:5000
+  WB_TELEMETRY_ENABLED: "true"
+  WB_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+  WB_WORKER_METRICS_BIND: 0.0.0.0
+
+services:
+  postgres:
+    image: postgres@sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b
+    environment:
+      POSTGRES_DB: workbench
+      POSTGRES_USER: workbench
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run bootstrap first}
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workbench -d workbench"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  temporal-volume-init:
+    image: python:3.12-slim@sha256:a0f57064cbdcd6285fa45f51237ab0b35ea8ebaed06a1f5973e89e19dfb86704
+    user: '0:0'
+    command: ["python", "-c", "import os; os.chown('/data', 1000, 1000)"]
+    volumes: ["temporal-data:/data"]
+
+  temporal:
+    image: temporalio/temporal@sha256:ad4c82c97bd12b417d1ea942610dbcd511afb250c4d5ed26c694009533df447e
+    command: ["server", "start-dev", "--ip", "0.0.0.0", "--db-filename", "/data/temporal.db", "--ui-ip", "0.0.0.0"]
+    ports: ["127.0.0.1:7233:7233", "127.0.0.1:8233:8233"]
+    volumes: ["temporal-data:/data"]
+    depends_on:
+      temporal-volume-init: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "temporal", "operator", "cluster", "health", "--address", "127.0.0.1:7233"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  s3:
+    image: motoserver/moto@sha256:120b1589c6df7e35d2092935f6ff724486bb2c4189d0e36ce795baba1400ffd2
+    command: ["-p", "5000"]
+    ports: ["127.0.0.1:5000:5000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  keycloak:
+    image: quay.io/keycloak/keycloak@sha256:5f3fb534cde6bf006d79f5912473e5d2c828c707cdfc52e16972803aca9d43dd
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: local-admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?run bootstrap first}
+      KC_HEALTH_ENABLED: "true"
+    ports: ["127.0.0.1:8081:8080"]
+    volumes: ["./keycloak-realm.json:/opt/keycloak/data/import/sih-local-realm.json:ro"]
+
+  mailpit:
+    image: axllent/mailpit@sha256:0790692be935ea4420d085694f7985b1f692ca6a8771ab0e0bd8ba75ac180498
+    ports: ["127.0.0.1:8025:8025", "127.0.0.1:1025:1025"]
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib@sha256:7f22d2a6748110ffb6a59bc0df448bccbf501cdb667d610ede4c61d3863d5849
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes: ["./otel-collector.yaml:/etc/otelcol/config.yaml:ro"]
+    ports: ["127.0.0.1:4318:4318"]
+    depends_on: [jaeger]
+
+  jaeger:
+    image: jaegertracing/jaeger@sha256:836b967b5abcf1f7758066aa6b348619267a2f1459f72d472840570f9bd88a17
+    ports: ["127.0.0.1:16686:16686"]
+
+  prometheus:
+    image: prom/prometheus@sha256:fa3302279710be2f21a8301ec17a8b4f2301fd829bd113839b3b6b02b6f191a2
+    volumes: ["./prometheus.yaml:/etc/prometheus/prometheus.yml:ro"]
+    ports: ["127.0.0.1:9090:9090"]
+
+  grafana:
+    image: grafana/grafana@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f
+    environment:
+      GF_SECURITY_ADMIN_USER: local-admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?run bootstrap first}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on: [prometheus]
+
+  migrate:
+    build: {context: ../.., dockerfile: Dockerfile, target: runtime}
+    image: sih-workbench:foundation
+    environment:
+      <<: *app-environment
+      WB_DATABASE_URL: postgresql+psycopg://workbench:${POSTGRES_PASSWORD}@postgres:5432/workbench
+      APP_DATABASE_PASSWORD: ${APP_DATABASE_PASSWORD:?run bootstrap first}
+      DELIVERY_DATABASE_PASSWORD: ${DELIVERY_DATABASE_PASSWORD:?run bootstrap first}
+      RELAY_DATABASE_PASSWORD: ${RELAY_DATABASE_PASSWORD:?run bootstrap first}
+      SCAN_DATABASE_PASSWORD: ${SCAN_DATABASE_PASSWORD:?run bootstrap first}
+      WORKER_DATABASE_PASSWORD: ${WORKER_DATABASE_PASSWORD:?run bootstrap first}
+    command: ["python", "-m", "workbench.platform.migrate"]
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  api:
+    image: sih-workbench:foundation
+    pull_policy: never
+    environment:
+      <<: *app-environment
+      WB_DOMAIN_ENABLED: 'true'
+      WB_DEPENDENCY_CHECKS: 'true'
+      WB_DATABASE_URL: postgresql+psycopg://workbench_api:${APP_DATABASE_PASSWORD}@postgres:5432/workbench
+      WB_APP_DATABASE_URL: postgresql+psycopg://workbench_api:${APP_DATABASE_PASSWORD}@postgres:5432/workbench
+      WB_DELIVERY_DATABASE_URL: postgresql+psycopg://workbench_delivery:${DELIVERY_DATABASE_PASSWORD}@postgres:5432/workbench
+    volumes:
+      - ../../.local/fixtures.json:/local/fixtures.json:ro
+      - ../../.local/fixture-public.pem:/local/fixture-public.pem:ro
+    ports: ["127.0.0.1:8000:8000"]
+    read_only: true
+    tmpfs: ["/tmp:size=64M"]
+    depends_on:
+      local-seed: {condition: service_completed_successfully}
+      s3: {condition: service_healthy}
+      temporal: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  worker:
+    image: sih-workbench:foundation
+    pull_policy: never
+    environment:
+      <<: *app-environment
+      WB_SERVICE_NAME: workbench-worker
+    read_only: true
+    tmpfs: ["/tmp:size=64M"]
+    command: ["python", "-m", "workbench.worker"]
+    depends_on:
+      temporal: {condition: service_healthy}
+
+  intake-worker:
+    image: sih-workbench:foundation
+    pull_policy: never
+    environment:
+      <<: *app-environment
+      WB_WORKER_DATABASE_URL: postgresql+psycopg://workbench_worker:${WORKER_DATABASE_PASSWORD}@postgres:5432/workbench
+    read_only: true
+    tmpfs: [/tmp:size=64M]
+    command: [python, -m, workbench.processing.intake_worker]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      temporal: {condition: service_healthy}
+
+  outbox-relay:
+    image: sih-workbench:foundation
+    pull_policy: never
+    environment:
+      <<: *app-environment
+      WB_RELAY_DATABASE_URL: postgresql+psycopg://workbench_relay:${RELAY_DATABASE_PASSWORD}@postgres:5432/workbench
+    read_only: true
+    tmpfs: [/tmp:size=64M]
+    command: [python, -m, workbench.platform.outbox]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      temporal: {condition: service_healthy}
+
+  scan-volume-init:
+    image: python:3.12-slim@sha256:a0f57064cbdcd6285fa45f51237ab0b35ea8ebaed06a1f5973e89e19dfb86704
+    user: '0:0'
+    command: [python, -c, "import os; os.chown('/jobs/in',65532,65532); os.chown('/jobs/out',65532,65532)"]
+    volumes: [scan-input:/jobs/in, scan-output:/jobs/out]
+
+  parser:
+    build: {context: ../.., dockerfile: Dockerfile, target: parser}
+    image: sih-workbench:parser
+    pull_policy: never
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 1g
+    cpus: 1
+    pids_limit: 64
+    tmpfs: [/tmp:size=64M]
+    volumes: [scan-input:/jobs/in:ro, scan-output:/jobs/out]
+    depends_on:
+      scan-volume-init: {condition: service_completed_successfully}
+
+  clam-update:
+    image: clamav/clamav@sha256:bda39705e291105049c3936e2803ac90b955172af8030f94f05dce1252df6c6d
+    user: '0:0'
+    entrypoint: [/bin/sh, -ec]
+    command: ["chown -R clamav:clamav /var/lib/clamav; exec freshclam --stdout"]
+    volumes: [clam-signatures:/var/lib/clamav]
+
+  clam-updater:
+    image: clamav/clamav@sha256:bda39705e291105049c3936e2803ac90b955172af8030f94f05dce1252df6c6d
+    user: clamav
+    entrypoint: [freshclam]
+    healthcheck: {disable: true}
+    command: [--daemon, --foreground, --stdout, --checks=12, --log=/tmp/freshclam.log, --pid=/tmp/freshclam.pid]
+    volumes: [clam-signatures:/var/lib/clamav]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: [/tmp:size=32M]
+    depends_on:
+      clam-update: {condition: service_completed_successfully}
+
+  clamav:
+    image: clamav/clamav@sha256:bda39705e291105049c3936e2803ac90b955172af8030f94f05dce1252df6c6d
+    user: clamav
+    entrypoint: [/bin/sh, -ec]
+    command: ["exec clamd --foreground=true --config-file=/etc/clamav/clamd.conf"]
+    networks: [processing]
+    mem_limit: 2g
+    volumes: [clam-signatures:/var/lib/clamav:ro, ./clamd.conf:/etc/clamav/clamd.conf:ro]
+    tmpfs: [/tmp:size=32M]
+    depends_on:
+      clam-update: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD-SHELL, "clamdscan --config-file=/etc/clamav/clamd.conf --ping 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+
+  scan-worker:
+    image: sih-workbench:foundation
+    pull_policy: never
+    environment:
+      <<: *app-environment
+      WB_SCAN_DATABASE_URL: postgresql+psycopg://workbench_scanner:${SCAN_DATABASE_PASSWORD}@postgres:5432/workbench
+      WB_SCANNER_HOST: clamav
+      WB_SCAN_INPUT_DIRECTORY: /jobs/in
+      WB_SCAN_OUTPUT_DIRECTORY: /jobs/out
+    networks: [default, processing]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 512m
+    tmpfs: [/tmp:size=32M]
+    volumes: [scan-input:/jobs/in, scan-output:/jobs/out:ro]
+    command: [python, -m, workbench.processing.scan_worker]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      temporal: {condition: service_healthy}
+      clamav: {condition: service_healthy}
+      parser: {condition: service_started}
+
+  reconcile-worker:
+    image: sih-workbench:foundation
+    pull_policy: never
+    environment:
+      <<: *app-environment
+      WB_SCAN_DATABASE_URL: postgresql+psycopg://workbench_scanner:${SCAN_DATABASE_PASSWORD}@postgres:5432/workbench
+    command: [python, -m, workbench.adapters.reconciliation]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      s3: {condition: service_healthy}
+
+  local-seed:
+    image: sih-workbench:foundation
+    pull_policy: never
+    environment:
+      <<: *app-environment
+      WB_DATABASE_URL: postgresql+psycopg://workbench:${POSTGRES_PASSWORD}@postgres:5432/workbench
+      WB_S3_ENDPOINT: http://s3:5000
+    volumes:
+      - ../../.local/fixtures.json:/local/fixtures.json:ro
+      - ../../.local/rule-candidates.json:/app/.local/rule-candidates.json:ro
+    command: [python, -m, workbench.platform.local_seed]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      s3: {condition: service_healthy}
+
+volumes:
+  clam-signatures:
+    labels: {workbench.scope: phase-4-development}
+  scan-input:
+    driver_opts: {type: tmpfs, device: tmpfs, o: size=268435456}
+    labels: {workbench.scope: phase-4-development}
+  scan-output:
+    driver_opts: {type: tmpfs, device: tmpfs, o: size=268435456}
+    labels: {workbench.scope: phase-4-development}
+  postgres-data:
+    labels: {workbench.scope: phase-1-development}
+  temporal-data:
+    labels: {workbench.scope: phase-1-development}
+
+networks:
+  processing:
+    internal: true

@@ -1,0 +1,44 @@
+name: Foundation supply chain
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  dependencies:
+    runs-on: ubuntu-latest
+    defaults:
+      run: {working-directory: backend}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff
+        with: {version: '0.13.4', python-version: '3.12'}
+      - run: uv sync --frozen --group dev --group spikes
+      - run: mkdir -p ../artifacts
+      - run: uv run python tools/check_secrets.py
+      - run: uv run pip-audit --progress-spinner off --format json --output ../artifacts/dependency-audit.json
+      - run: uv run cyclonedx-py environment --output-reproducible --of JSON -o ../artifacts/sbom.cdx.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: dependency-and-sbom-evidence, path: artifacts/}
+  image:
+    strategy:
+      matrix:
+        target: [runtime, parser]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: .
+          file: Dockerfile
+          target: ${{ matrix.target }}
+          load: true
+          tags: sih-workbench:${{ matrix.target }}-security-check
+      - uses: aquasecurity/trivy-action@8f28faec26515256b6d22074d1d2a8986f4cbd87
+        with:
+          image-ref: sih-workbench:${{ matrix.target }}-security-check
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: false

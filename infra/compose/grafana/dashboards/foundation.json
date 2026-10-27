@@ -1,0 +1,11 @@
+{
+  "title": "Workbench Foundation",
+  "uid": "workbench-foundation",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "panels": [
+    {"id": 1, "title": "Requests per second", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}, "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "sum by (route) (rate(workbench_http_requests_total[1m]))", "legendFormat": "{{route}}"}]},
+    {"id": 2, "title": "HTTP error responses", "type": "timeseries", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}, "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "sum by (status) (workbench_http_requests_total{status=~\"4..|5..\"})", "legendFormat": "{{status}}"}]}
+  ]
+}
