@@ -663,11 +663,13 @@ def register_intake_api(app: FastAPI, settings: Settings) -> DomainStore:
 
     app.include_router(router)
     app.include_router(create_verification_router(store, principal))
+    from workbench.api.media_spatial import create_phase_11_router
     from workbench.api.review_rectification import create_phase_9_router
     from workbench.api.tasks_alerts_audit import create_phase_10_router
 
     app.include_router(create_phase_9_router(store, principal))
     app.include_router(create_phase_10_router(store, principal))
+    app.include_router(create_phase_11_router(store, principal))
     app.state.domain_store = store
     return store
 

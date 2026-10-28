@@ -955,6 +955,120 @@ audit_checkpoints = Table(
     time_created(),
 )
 
+# Phase 11: Media evidence, frame sampling, equipment detection, and floor plan reconciliation
+media_metadata = Table(
+    "media_metadata",
+    metadata,
+    pk(),
+    institution(),
+    Column("evidence_id", String(36), nullable=False),
+    Column("evidence_version_id", String(36), ForeignKey("evidence_versions.id"), nullable=False),
+    Column("media_type", String(50), nullable=False),
+    Column("video_role", String(50), nullable=False, server_default="NONE"),
+    Column("duration_seconds", Float, nullable=False, server_default="0"),
+    Column("dimensions", JSON),
+    Column("codec", String(50)),
+    Column("frame_rate", Float),
+    Column("bitrate_kbps", Integer),
+    Column("gps_metadata", JSON),
+    Column("has_gps", Boolean, nullable=False, server_default="false"),
+    Column("metadata_status", String(50), nullable=False, server_default="VALID"),
+    Column("duration_policy_result", JSON),
+    Column("exif_raw", JSON),
+    time_created(),
+)
+
+media_sampled_frames = Table(
+    "media_sampled_frames",
+    metadata,
+    pk(),
+    institution(),
+    Column("media_metadata_id", String(36), ForeignKey("media_metadata.id"), nullable=False),
+    Column("evidence_version_id", String(36), ForeignKey("evidence_versions.id"), nullable=False),
+    Column("frame_index", Integer, nullable=False),
+    Column("timestamp_seconds", Float, nullable=False),
+    Column("perceptual_hash", String(64), nullable=False),
+    Column("difference_hash", String(64)),
+    Column("average_hash", String(64)),
+    Column("frame_storage_key", String(255)),
+    Column("is_keyframe", Boolean, nullable=False, server_default="true"),
+    time_created(),
+)
+
+media_similarity_matches = Table(
+    "media_similarity_matches",
+    metadata,
+    pk(),
+    institution(),
+    Column(
+        "source_evidence_version_id",
+        String(36),
+        ForeignKey("evidence_versions.id"),
+        nullable=False,
+    ),
+    Column(
+        "target_evidence_version_id",
+        String(36),
+        ForeignKey("evidence_versions.id"),
+        nullable=False,
+    ),
+    Column("source_frame_id", String(36), ForeignKey("media_sampled_frames.id")),
+    Column("target_frame_id", String(36), ForeignKey("media_sampled_frames.id")),
+    Column("similarity_score", Float, nullable=False),
+    Column("hamming_distance", Integer, nullable=False),
+    Column("match_type", String(50), nullable=False),
+    Column("scope", String(50), nullable=False, server_default="INTRA_APPLICATION"),
+    Column(
+        "advisory_disposition",
+        String(50),
+        nullable=False,
+        server_default="POTENTIAL_REPEATED_SCENE",
+    ),
+    time_created(),
+)
+
+equipment_detections = Table(
+    "equipment_detections",
+    metadata,
+    pk(),
+    institution(),
+    Column("application_id", String(36), ForeignKey("applications.id"), nullable=False),
+    Column("evidence_version_id", String(36), ForeignKey("evidence_versions.id"), nullable=False),
+    Column("room_identifier", String(100), nullable=False),
+    Column("equipment_category", String(50), nullable=False, server_default="WORKSTATION"),
+    Column("declared_quantity", Integer, nullable=False),
+    Column("model_mode", String(50), nullable=False, server_default="INFERENCE_RUN"),
+    Column("model_name", String(100), nullable=False),
+    Column("model_version", String(50), nullable=False),
+    Column("detected_candidate_count", Integer, nullable=False),
+    Column("detected_boxes", JSON, nullable=False),
+    Column("confidence_score", Float, nullable=False, server_default="0.85"),
+    Column("coverage_assessment", JSON, nullable=False),
+    Column("advisory_finding", Text, nullable=False),
+    Column("human_correction", JSON),
+    Column("status", String(50), nullable=False, server_default="ADVISORY_PENDING_REVIEW"),
+    time_created(),
+)
+
+floor_plan_reconciliations = Table(
+    "floor_plan_reconciliations",
+    metadata,
+    pk(),
+    institution(),
+    Column("application_id", String(36), ForeignKey("applications.id"), nullable=False),
+    Column("evidence_version_id", String(36), ForeignKey("evidence_versions.id"), nullable=False),
+    Column("plan_name", String(100), nullable=False),
+    Column("total_declared_area_sqm", Float, nullable=False),
+    Column("total_measured_area_sqm", Float, nullable=False),
+    Column("declared_spaces", JSON, nullable=False),
+    Column("identified_spaces", JSON, nullable=False),
+    Column("matched_spaces", JSON, nullable=False),
+    Column("discrepancies", JSON, nullable=False),
+    Column("reconciliation_status", String(50), nullable=False, server_default="RECONCILED"),
+    Column("notes", Text),
+    time_created(),
+)
+
 for table in (
     applications,
     assignments,
@@ -991,6 +1105,11 @@ for table in (
     durable_timers,
     notifications,
     audit_checkpoints,
+    media_metadata,
+    media_sampled_frames,
+    media_similarity_matches,
+    equipment_detections,
+    floor_plan_reconciliations,
 ):
     Index(f"ix_{table.name}_owner_time", table.c.institution_id, table.c.created_at, table.c.id)
 Index("ix_outbox_delivery", outbox.c.delivered_at, outbox.c.available_at, outbox.c.lease_until)
@@ -1054,3 +1173,28 @@ Index("ix_lifecycle_tasks_dedup", lifecycle_tasks.c.dedup_key)
 Index("ix_durable_timers_slot_gen", durable_timers.c.slot_id, durable_timers.c.generation)
 Index("ix_notifications_status", notifications.c.status)
 Index("ix_audit_checkpoints_app", audit_checkpoints.c.application_id)
+Index(
+    "ix_media_metadata_evidence",
+    media_metadata.c.evidence_id,
+    media_metadata.c.evidence_version_id,
+)
+Index(
+    "ix_sampled_frames_meta",
+    media_sampled_frames.c.media_metadata_id,
+    media_sampled_frames.c.frame_index,
+)
+Index("ix_sampled_frames_phash", media_sampled_frames.c.perceptual_hash)
+Index(
+    "ix_similarity_matches_source",
+    media_similarity_matches.c.source_evidence_version_id,
+)
+Index(
+    "ix_similarity_matches_target",
+    media_similarity_matches.c.target_evidence_version_id,
+)
+Index(
+    "ix_equipment_detections_app_room",
+    equipment_detections.c.application_id,
+    equipment_detections.c.room_identifier,
+)
+Index("ix_floor_plan_reconciliations_app", floor_plan_reconciliations.c.application_id)

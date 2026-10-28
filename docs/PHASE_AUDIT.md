@@ -1,4 +1,4 @@
-# Phase Audit: Exit Gates Verification for Phases 1 to 10
+# Phase Audit: Exit Gates Verification for Phases 1 to 11
 
 This audit cross-references the non-negotiable exit gate specifications in [BACKEND_IMPLEMENTATION_PLAN.md](file:///c:/Users/indhu/SIH_26/docs/BACKEND_IMPLEMENTATION_PLAN.md) (Section 10) against the automated test suite in `backend/tests/`.
 
@@ -8,7 +8,7 @@ This audit cross-references the non-negotiable exit gate specifications in [BACK
 
 ### Exact Full-Test Command
 
-To execute the complete 127-test backend verification suite with zero skips:
+To execute the complete 135-test backend verification suite with zero skips:
 
 ```powershell
 # PowerShell
@@ -50,7 +50,7 @@ uv run --project backend pytest backend/tests -q -rs
 | **Phase 8** (Source Verification & External Ground Truth) | *"Every simulated result carries simulated=true in database, API, report, and metrics; it never counts as live success; all six statuses and the outage-to-manual-task path are covered; missing documents never receive a verification attempt; live coverage gap is surfaced in capabilities."* | [`backend/tests/test_phase_8_verification.py::test_capabilities_exposes_provider_modes_and_blocked_connector`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_8_verification.py#L26-L44)<br>[`backend/tests/test_phase_8_verification.py::test_missing_document_never_receives_verification_attempt`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_8_verification.py#L45-L84)<br>[`backend/tests/test_phase_8_verification.py::test_all_six_source_verification_statuses_covered`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_8_verification.py#L85-L184)<br>[`backend/tests/test_outage_to_manual_task_path`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_8_verification.py#L185-L223)<br>[`backend/tests/test_authorized_officer_manual_confirmation`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_8_verification.py#L224-L260)<br>[`backend/tests/test_phase_8_verification.py::test_simulated_never_counts_as_live_success_in_db_api_metrics`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_8_verification.py#L261-L317)<br>[`backend/tests/test_phase_8_verification.py::test_historical_record_import_and_reconciliation`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_8_verification.py#L318-L380)<br>[`backend/tests/test_phase_8_verification.py::test_pdf_signature_and_qr_verification`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_8_verification.py#L381-L435)<br>[`backend/tests/test_phase_8_verification.py::test_verification_cross_tenant_denial`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_8_verification.py#L436-L481)<br>[`backend/tests/test_phase_8_verification.py::test_unassigned_officer_cannot_read_another_institution_verification_rows`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_8_verification.py#L482-L575) | **PROVEN** (Capabilities report `source_verification_mode="SIMULATED"` and `production_connector_status="BLOCKED_BY_MISSING_ACCESS"`; missing documents reject attempts before DB insert; all 6 statuses (`VERIFIED`, `MISMATCH_DETECTED`, `EXPIRED`, `VERIFICATION_PENDING`, `SOURCE_UNAVAILABLE`, `MANUAL_REVIEW_REQUIRED`) verified; outage-to-manual-task assigns `manual_task_id` and escalates; officer manual confirmation with MFA resolves review; `simulated=True` and `live_success=False` strictly enforced across DB rows, API returns, and telemetry metrics; versioned historical EoA/intake records imported with SHA-256 and reconciled; PDF signatures and government QR allowlists validated; RLS blocks unassigned officer access with 403 and unlocks after formal assignment) |
 | **Phase 9** (Review, Rectification & Diffing) | *"Machine findings remain separated from human review dispositions; reports are generated with audience separation (officer internal vs applicant public) and explicit SIMULATED labels; v1 report is immutable with stored hash; response windows enforce permitted scope, deadline, and reject unrelated changes; reassessment produces structured finding diffs (RESOLVED, UNCHANGED, NEW, CHANGED, NO_LONGER_EVALUABLE) without mutating baseline runs; unassigned officers are denied cross-tenant access via RLS."* | [`backend/tests/test_phase_9_review_rectification.py::test_machine_findings_stored_separately_from_human_dispositions`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_9_review_rectification.py#L76-L151)<br>[`backend/tests/test_phase_9_review_rectification.py::test_review_tasks_read_model_waiting_on_dimensions`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_9_review_rectification.py#L154-L197)<br>[`backend/tests/test_phase_9_review_rectification.py::test_separate_officer_and_applicant_reports_v1_immutable_and_simulated_labeled`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_9_review_rectification.py#L199-L273)<br>[`backend/tests/test_phase_9_review_rectification.py::test_response_window_scope_deadline_and_unrelated_change_rejected`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_9_review_rectification.py#L275-L390)<br>[`backend/tests/test_phase_9_review_rectification.py::test_reassessment_finding_diff_and_original_submission_reproducible`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_9_review_rectification.py#L392-L622)<br>[`backend/tests/test_phase_9_review_rectification.py::test_unassigned_officer_cannot_read_another_institution_phase_9_rows`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_9_review_rectification.py#L624-L723) | **PROVEN** (Machine findings remain untouched in `findings` while officer dispositions record in `review_dispositions`; read model exposes `waiting_on` across OFFICER, APPLICANT, SOURCE, INTERPRETATION; report v1 immutable with SHA-256 hash; simulated results labeled SIMULATED in all reports; rectification window strictly rejects unrelated slot/field changes with 422; reassessment produces finding diff [1 resolved, 1 unchanged] while baseline run & v1 report remain reproducible; RLS blocks unassigned officer access with 403) |
 | **Phase 10** (Lifecycle Tasks, Alerts & Audit Exports) | *"One unchanged condition creates one open alert on replay; replacing evidence cancels obsolete timers; a source outage becomes one manual task; upload to run to outage to officer response to reassessment is traceable from stored events; unassigned officers and other institutions are denied."* | [`backend/tests/test_phase_10_alerts_audit.py::test_one_unchanged_condition_creates_one_open_alert_on_replay`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_10_alerts_audit.py#L29-L71)<br>[`backend/tests/test_phase_10_alerts_audit.py::test_security_alerts_separated_from_compliance`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_10_alerts_audit.py#L73-L133)<br>[`backend/tests/test_phase_10_alerts_audit.py::test_task_state_machine_and_source_outage_to_single_manual_task`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_10_alerts_audit.py#L135-L188)<br>[`backend/tests/test_phase_10_alerts_audit.py::test_versioned_durable_timers_replace_evidence_cancels_older_reminders`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_10_alerts_audit.py#L190-L272)<br>[`backend/tests/test_phase_10_alerts_audit.py::test_delivery_in_app_and_mailpit`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_10_alerts_audit.py#L274-L333)<br>[`backend/tests/test_phase_10_alerts_audit.py::test_audit_and_access_history_with_phase_4_view_download_stream_outcomes`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_10_alerts_audit.py#L335-L435)<br>[`backend/tests/test_phase_10_alerts_audit.py::test_checkpointed_audit_export_scoped_auditor_permission_and_integrity`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_10_alerts_audit.py#L437-L525)<br>[`backend/tests/test_phase_10_alerts_audit.py::test_full_traceability_upload_run_outage_officer_response_reassessment`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_10_alerts_audit.py#L528-L629)<br>[`backend/tests/test_phase_10_alerts_audit.py::test_phase_10_unassigned_officer_and_cross_tenant_denial`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_10_alerts_audit.py#L631-L704) | **PROVEN** (Replay on unchanged condition yields existing open alert without duplicates; security alerts strictly partitioned from compliance; source outage yields a single manual task and invalid state transitions are rejected with 409; uploading evidence version cancels obsolete timers of older generations; in-app and Mailpit deliveries succeed with tracked states; access history tracks Phase 4 VIEW/DOWNLOAD stream outcomes and allowed/denied events; checkpointed export validates cryptographic hash chain continuity under scoped auditor permission; complete lifecycle from upload through outage to officer response and reassessment is sequentially preserved in immutable audit log; unassigned officers and cross-tenant actors are denied with 403; 127 tests passed, 2026-10-28) |
-| **Phase 11** (Media Integrity & Spatial Analysis) | Video analysis, contact sheets, perceptual hashing, geotag extraction, visible equipment advisory checks, floor plan reconciliation. | Scheduled for next implementation step. | **NOT STARTED** |
+| **Phase 11** (Media Evidence & Spatial Discrepancy) | *"A real model run or expressly declared manual fallback is shown. No canned boxes are presented as inference, no partial view is called complete inventory, and missing metadata/duplicate frames never become source mismatch."* | [`backend/tests/test_phase_11_media_spatial.py::test_video_role_duration_policy_differentiation`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_11_media_spatial.py)<br>[`backend/tests/test_phase_11_media_spatial.py::test_missing_gps_exif_handled_as_unavailable_metadata_never_error`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_11_media_spatial.py)<br>[`backend/tests/test_phase_11_media_spatial.py::test_frame_sampling_and_contact_sheet_generation`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_11_media_spatial.py)<br>[`backend/tests/test_phase_11_media_spatial.py::test_perceptual_hash_and_near_duplicate_candidate_detection`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_11_media_spatial.py)<br>[`backend/tests/test_phase_11_media_spatial.py::test_equipment_detection_advisory_wording_and_partial_view_bounds`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_11_media_spatial.py)<br>[`backend/tests/test_phase_11_media_spatial.py::test_audited_human_count_correction_preserves_model_inference`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_11_media_spatial.py)<br>[`backend/tests/test_phase_11_media_spatial.py::test_floor_plan_spatial_reconciliation_and_area_tolerance`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_11_media_spatial.py)<br>[`backend/tests/test_phase_11_media_spatial.py::test_phase_11_unassigned_officer_and_cross_tenant_denial`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_11_media_spatial.py) | **PROVEN** (Video duration policy differentiates 60-120s website disclosure vs 180-1800s EVC walkthrough without shared constants; missing GPS/EXIF is handled as unavailable metadata and never flagged as error or source mismatch; bounded frame sampler extracts deterministic frames capped at 180 and generates timestamped PNG contact sheet thumbnail grids; perceptual hashing and Hamming distance threshold <= 5 detect near-duplicate frames; room-level equipment candidate detection proposes normalized bounding boxes [ymin, xmin, ymax, xmax] with coverage assessment (~65%) and calibrated advisory wording explicitly not establishing non-existence of remaining units; audited human count correction updates status to OFFICER_CONFIRMED with reason while preserving original model inference unmutated; floor plan spatial reconciliation matches declared vs measured spaces within 5% area tolerance; RLS blocks unassigned officers and cross-tenant actors with 403 and permits access upon formal case assignment; 135 tests passed, 2026-10-28) |
 | **Phase 12** (Hardening, Anti-Tamper & Adversarial Robustness) | Adversarial test suite, tampering detection, prompt injection defenses, model output validation, rate limiting, and security hardening. | Scheduled after Phase 11. | **NOT STARTED** |
 | **Phase 13** (Export Packets, Verifiable Credentials & Handover) | Cryptographic archive packaging, W3C verifiable credentials, offline verification tools, and handover bundle. | Scheduled after Phase 12. | **NOT STARTED** |
 | **Phase 14** (Security, Secrets, Access & Compliance Hardening) | Production cloud IAM, key rotation, external secret managers, and production compliance certifications. | Out of scope for prototype. | **NOT STARTED** (Out of scope for the prototype; requires a cloud environment, named owners and approvals.) |
@@ -66,8 +66,8 @@ $ $env:WB_FILE_INTEGRATION = "1"
 $ $env:WB_CHAOS_INTEGRATION = "1"
 $ uv run --project backend pytest backend/tests -q -rs
 
-........................................................................ [ 56%]
-.......................................................                  [100%]
+........................................................................ [ 53%]
+...............................................................          [100%]
 ============================== warnings summary ===============================
 backend\.venv\Lib\site-packages\fastapi\testclient.py:1
   C:\Users\indhu\SIH_26\backend\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
@@ -78,13 +78,13 @@ backend\tests\test_file_intake_integration.py:46
     writer.add_js("app.alert('synthetic-test');")
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-127 passed, 2 warnings in 183.08s (0:03:03)
+135 passed, 2 warnings in 373.42s (0:06:13)
 ```
 
-- **Passed:** 127
+- **Passed:** 135
 - **Skipped:** 0 (ZERO unexplained or remaining skips)
 - **Failed:** 0
-- **Duration:** 183.08s (3 min 03 sec)
+- **Duration:** 373.42s (6 min 13 sec)
 
 ---
 
@@ -127,6 +127,19 @@ backend\tests\test_phase_10_alerts_audit.py::test_phase_10_unassigned_officer_an
 ================= 1 passed, 8 deselected, 1 warning in 2.30s ==================
 ```
 
+### Phase 11 Media & Spatial Reconciliation RLS Denial
+The test [`backend/tests/test_phase_11_media_spatial.py::test_phase_11_unassigned_officer_and_cross_tenant_denial`](file:///c:/Users/indhu/SIH_26/backend/tests/test_phase_11_media_spatial.py#L465-L540) verifies that:
+1. Institution B actors attempting to read Institution A's equipment detections or floor plan reconciliations receive `403/404 Forbidden`.
+2. Unassigned officers attempting to read Institution A's equipment detections or floor plan reconciliations receive `403/404 Forbidden` even with active MFA tokens.
+3. Upon active formal assignment to Institution A via `case_assignments`, equipment detections and floor plan reconciliations become accessible (`200 OK`).
+
+```
+$ uv run --project backend pytest backend/tests/test_phase_11_media_spatial.py -k "test_phase_11_unassigned_officer_and_cross_tenant_denial" -v
+
+backend\tests\test_phase_11_media_spatial.py::test_phase_11_unassigned_officer_and_cross_tenant_denial PASSED [100%]
+================= 1 passed, 7 deselected, 1 warning in 2.21s ==================
+```
+
 ---
 
 ## 5. Static Analysis & Strict Mypy Verification
@@ -139,10 +152,10 @@ uv run --project backend mypy --config-file backend/pyproject.toml backend/src/w
 
 Output:
 ```
-Success: no issues found in 123 source files
+Success: no issues found in 126 source files
 ```
 
 ### Linter & Formatter Verification
 - **Linter (`uv run --project backend ruff check backend/src backend/tests backend/migrations`):** `All checks passed!`
-- **Formatter (`uv run --project backend ruff format --check backend/src backend/tests backend/migrations`):** `171 files already formatted`
+- **Formatter (`uv run --project backend ruff format --check backend/src backend/tests backend/migrations`):** `176 files already formatted`
 
