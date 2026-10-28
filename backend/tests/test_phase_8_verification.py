@@ -5,7 +5,7 @@ historical records, PDF signatures, QR validations, and simulation boundaries.
 from __future__ import annotations
 
 import base64
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -226,6 +226,21 @@ def test_authorized_officer_manual_confirmation(h):
     inst_id = h.institutions["a"]
     ev_id = str(uuid4())
     ev_ver_id = str(uuid4())
+
+    # Pre-assign officer to Institution A
+    with h.owner.begin() as conn:
+        conn.execute(
+            insert(t.case_assignments).values(
+                id=str(uuid4()),
+                institution_id=inst_id,
+                application_id=None,
+                actor_id=h.actors["officer"],
+                access_role="officer",
+                granted_by=h.actors["admin"],
+                reason="Assigned review for scrutiny committee",
+                expires_at=datetime.now(UTC) + timedelta(days=7),
+            )
+        )
 
     payload = {
         "institution_id": inst_id,
@@ -477,3 +492,99 @@ def test_verification_cross_tenant_denial(h):
         },
     )
     assert resp_verify.status_code in (403, 404)
+
+
+def test_unassigned_officer_cannot_read_another_institution_verification_rows(h):
+    """Phase 2 & Phase 8 RLS: Unassigned officer cannot read another institution rows."""
+    from datetime import timedelta
+
+    inst_a = h.institutions["a"]
+    ev_id = str(uuid4())
+    ev_ver_id = str(uuid4())
+
+    # 1. Pre-populate verification observation and historical record for Institution A
+    with h.owner.begin() as conn:
+        obs_id = str(uuid4())
+        conn.execute(
+            insert(t.source_observations).values(
+                id=obs_id,
+                institution_id=inst_a,
+                evidence_id=ev_id,
+                evidence_version_id=ev_ver_id,
+                provider_code="AICTE_HISTORICAL_SIMULATOR",
+                mode="SIMULATED",
+                simulated=True,
+                live_success=False,
+                status=SourceVerificationStatus.VERIFIED.value,
+                freshness_timestamp=datetime.now(UTC),
+                observation_fingerprint="fp_officer_denial_test",
+            )
+        )
+        conn.execute(
+            insert(t.historical_records).values(
+                id=str(uuid4()),
+                institution_id=inst_a,
+                source="AICTE_PORTAL",
+                record_type="INTAKE",
+                academic_cycle=2026,
+                payload={"approved_intake": 180},
+                payload_sha256="abc123sha",
+                external_reference="EOA-2026-TN-102",
+                simulated=True,
+                import_lineage={"imported_by": "system"},
+                valid_from=datetime.now(UTC),
+            )
+        )
+
+    # 2. Unassigned officer (with valid MFA) attempts to read Institution A rows -> 403
+    resp_obs = h.call(
+        "GET",
+        f"/api/v1/verification/observations?institution_id={inst_a}",
+        actor="officer",
+        mfa=True,
+    )
+    assert resp_obs.status_code in (403, 404), f"Expected 403/404, got {resp_obs.status_code}"
+
+    resp_hist = h.call(
+        "GET",
+        f"/api/v1/historical-records?institution_id={inst_a}",
+        actor="officer",
+        mfa=True,
+    )
+    assert resp_hist.status_code in (403, 404), f"Expected 403/404, got {resp_hist.status_code}"
+
+    # 3. Assign the officer specifically to Institution A via formal case assignment
+    with h.owner.begin() as conn:
+        conn.execute(
+            insert(t.case_assignments).values(
+                id=str(uuid4()),
+                institution_id=inst_a,
+                application_id=None,
+                actor_id=h.actors["officer"],
+                access_role="officer",
+                granted_by=h.actors["admin"],
+                reason="Assigned review for institution inspection",
+                expires_at=datetime.now(UTC) + timedelta(days=7),
+            )
+        )
+
+    # 4. Now assigned officer can read Institution A verification rows
+    resp_assigned_obs = h.call(
+        "GET",
+        f"/api/v1/verification/observations?institution_id={inst_a}",
+        actor="officer",
+        mfa=True,
+    )
+    assert resp_assigned_obs.status_code == 200
+    obs_list = resp_assigned_obs.json()
+    assert len(obs_list) >= 1
+    assert any(o["id"] == obs_id for o in obs_list)
+
+    resp_assigned_hist = h.call(
+        "GET",
+        f"/api/v1/historical-records?institution_id={inst_a}",
+        actor="officer",
+        mfa=True,
+    )
+    assert resp_assigned_hist.status_code == 200
+    assert len(resp_assigned_hist.json()) >= 1

@@ -120,6 +120,7 @@ assignments = Table(
         name="fk_assignment_owner",
     ),
 )
+case_assignments = assignments
 emergency = Table(
     "emergency_grants",
     metadata,
@@ -757,6 +758,203 @@ signature_validations = Table(
     time_created(),
 )
 
+# Phase 9: Review, reports, response windows, and rectification
+review_dispositions = Table(
+    "review_dispositions",
+    metadata,
+    pk(),
+    institution(),
+    Column("application_id", String(36), ForeignKey("applications.id"), nullable=False),
+    Column("finding_id", String(36), nullable=False),
+    Column("evaluation_run_id", String(36), nullable=False),
+    Column("officer_id", String(36), ForeignKey("actor_identities.id"), nullable=False),
+    Column("disposition", String(50), nullable=False),
+    Column("rationale", Text, nullable=False),
+    Column("metadata", JSON),
+    time_created(),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
+
+review_tasks = Table(
+    "review_tasks",
+    metadata,
+    pk(),
+    institution(),
+    Column("application_id", String(36), ForeignKey("applications.id"), nullable=False),
+    Column("task_type", String(50), nullable=False),
+    Column("waiting_on", String(50), nullable=False),
+    Column("status", String(50), nullable=False, server_default="PENDING"),
+    Column("assigned_to", String(36)),
+    Column("details", JSON),
+    Column("deadline", DateTime(timezone=True)),
+    time_created(),
+    Column("resolved_at", DateTime(timezone=True)),
+)
+
+validation_reports = Table(
+    "validation_reports",
+    metadata,
+    pk(),
+    institution(),
+    Column("application_id", String(36), ForeignKey("applications.id"), nullable=False),
+    Column("evaluation_run_id", String(36), nullable=False),
+    Column("audience", String(20), nullable=False),
+    Column("version", Integer, nullable=False, server_default="1"),
+    Column("report_hash", String(64), nullable=False),
+    Column("status", String(20), nullable=False, server_default="FINAL"),
+    Column("summary", JSON, nullable=False),
+    Column("content", JSON, nullable=False),
+    Column("disclosure_policy", JSON, nullable=False),
+    time_created(),
+    UniqueConstraint(
+        "application_id",
+        "audience",
+        "version",
+        name="uq_validation_report_app_audience_ver",
+    ),
+)
+
+response_windows = Table(
+    "response_windows",
+    metadata,
+    pk(),
+    institution(),
+    Column("application_id", String(36), ForeignKey("applications.id"), nullable=False),
+    Column("opened_by", String(36), nullable=False),
+    Column("authority_reference", String(100), nullable=False),
+    Column("round_number", Integer, nullable=False, server_default="1"),
+    Column("max_rounds", Integer, nullable=False, server_default="2"),
+    Column("allowed_slots", JSON, nullable=False),
+    Column("allowed_fields", JSON, nullable=False),
+    Column("deadline", DateTime(timezone=True), nullable=False),
+    Column("status", String(30), nullable=False, server_default="OPEN"),
+    Column("current_revision", Integer, nullable=False),
+    time_created(),
+    Column("closed_at", DateTime(timezone=True)),
+)
+
+rectification_responses = Table(
+    "rectification_responses",
+    metadata,
+    pk(),
+    Column("window_id", String(36), ForeignKey("response_windows.id"), nullable=False),
+    institution(),
+    Column("application_id", String(36), ForeignKey("applications.id"), nullable=False),
+    Column("submitted_by", String(36), nullable=False),
+    Column("application_revision", Integer, nullable=False),
+    Column("response_manifest", JSON, nullable=False),
+    Column("declared_field_updates", JSON),
+    Column("reassessment_run_id", String(36)),
+    time_created(),
+)
+
+reassessment_diffs = Table(
+    "reassessment_diffs",
+    metadata,
+    pk(),
+    institution(),
+    Column("application_id", String(36), ForeignKey("applications.id"), nullable=False),
+    Column("response_id", String(36)),
+    Column("baseline_run_id", String(36), nullable=False),
+    Column("reassessment_run_id", String(36), nullable=False),
+    Column("diff_summary", JSON, nullable=False),
+    Column("finding_diffs", JSON, nullable=False),
+    time_created(),
+)
+
+# Phase 10: Alerts, semantic lifecycle tasks, durable timers, notifications, and audit checkpoints
+alerts = Table(
+    "alerts",
+    metadata,
+    pk(),
+    institution(),
+    Column("application_id", String(36), ForeignKey("applications.id")),
+    Column("category", String(50), nullable=False),
+    Column("trigger_type", String(50), nullable=False),
+    Column("dedup_key", String(255), nullable=False),
+    Column("severity", String(20), nullable=False),
+    Column("title", String(200), nullable=False),
+    Column("message", Text, nullable=False),
+    Column("status", String(30), nullable=False, server_default="OPEN"),
+    Column("details", JSON),
+    time_created(),
+    Column("acknowledged_at", DateTime(timezone=True)),
+    Column("resolved_at", DateTime(timezone=True)),
+    Column("acknowledged_by", String(36)),
+)
+
+lifecycle_tasks = Table(
+    "lifecycle_tasks",
+    metadata,
+    pk(),
+    institution(),
+    Column("application_id", String(36), ForeignKey("applications.id")),
+    Column("task_type", String(50), nullable=False),
+    Column("dedup_key", String(255), nullable=False),
+    Column("state", String(30), nullable=False, server_default="OPEN"),
+    Column("assigned_to", String(36)),
+    Column("details", JSON),
+    time_created(),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("resolved_at", DateTime(timezone=True)),
+)
+
+durable_timers = Table(
+    "durable_timers",
+    metadata,
+    pk(),
+    institution(),
+    Column("application_id", String(36), ForeignKey("applications.id"), nullable=False),
+    Column("slot_id", String(36)),
+    Column("timer_type", String(50), nullable=False),
+    Column("generation", Integer, nullable=False, server_default="1"),
+    Column("deadline", DateTime(timezone=True), nullable=False),
+    Column("status", String(30), nullable=False, server_default="SCHEDULED"),
+    Column("details", JSON),
+    time_created(),
+    Column("cancelled_at", DateTime(timezone=True)),
+    Column("fired_at", DateTime(timezone=True)),
+)
+
+notifications = Table(
+    "notifications",
+    metadata,
+    pk(),
+    institution(),
+    Column("application_id", String(36), ForeignKey("applications.id")),
+    Column("alert_id", String(36), ForeignKey("alerts.id")),
+    Column("task_id", String(36), ForeignKey("lifecycle_tasks.id")),
+    Column("recipient", String(255), nullable=False),
+    Column("channel", String(20), nullable=False),
+    Column("status", String(30), nullable=False, server_default="QUEUED"),
+    Column("provider_reference", String(100)),
+    Column("subject", String(250)),
+    Column("body", Text, nullable=False),
+    Column("retry_count", Integer, nullable=False, server_default="0"),
+    Column("retry_history", JSON),
+    time_created(),
+    Column("sent_at", DateTime(timezone=True)),
+    Column("acknowledged_at", DateTime(timezone=True)),
+)
+
+audit_checkpoints = Table(
+    "audit_checkpoints",
+    metadata,
+    pk(),
+    institution(),
+    Column("application_id", String(36), ForeignKey("applications.id")),
+    Column("auditor_id", String(36), ForeignKey("actor_identities.id"), nullable=False),
+    Column("stream", String(80), nullable=False),
+    Column("start_sequence", BigInteger, nullable=False),
+    Column("end_sequence", BigInteger, nullable=False),
+    Column("event_count", Integer, nullable=False),
+    Column("checkpoint_hash", String(64), nullable=False),
+    Column("archive_lag_seconds", Float, nullable=False, server_default="0"),
+    Column("integrity_status", String(20), nullable=False, server_default="VERIFIED"),
+    Column("manifest", JSON, nullable=False),
+    time_created(),
+)
+
 for table in (
     applications,
     assignments,
@@ -782,6 +980,17 @@ for table in (
     source_observations,
     verification_attempts,
     signature_validations,
+    review_dispositions,
+    review_tasks,
+    validation_reports,
+    response_windows,
+    rectification_responses,
+    reassessment_diffs,
+    alerts,
+    lifecycle_tasks,
+    durable_timers,
+    notifications,
+    audit_checkpoints,
 ):
     Index(f"ix_{table.name}_owner_time", table.c.institution_id, table.c.created_at, table.c.id)
 Index("ix_outbox_delivery", outbox.c.delivered_at, outbox.c.available_at, outbox.c.lease_until)
@@ -824,3 +1033,24 @@ Index("ix_source_observations_claim", source_observations.c.claim_id)
 Index("ix_source_observations_evidence", source_observations.c.evidence_version_id)
 Index("ix_verification_attempts_req", verification_attempts.c.request_fingerprint)
 Index("ix_signature_validations_evidence", signature_validations.c.evidence_version_id)
+Index("ix_review_dispositions_finding", review_dispositions.c.finding_id)
+Index("ix_review_tasks_status", review_tasks.c.status, review_tasks.c.waiting_on)
+Index(
+    "ix_validation_reports_run",
+    validation_reports.c.evaluation_run_id,
+    validation_reports.c.audience,
+    validation_reports.c.version,
+)
+Index("ix_response_windows_app", response_windows.c.application_id, response_windows.c.status)
+Index("ix_rectification_responses_window", rectification_responses.c.window_id)
+Index(
+    "ix_reassessment_diffs_runs",
+    reassessment_diffs.c.baseline_run_id,
+    reassessment_diffs.c.reassessment_run_id,
+)
+Index("ix_alerts_dedup_status", alerts.c.dedup_key, alerts.c.status)
+Index("ix_alerts_category_status", alerts.c.category, alerts.c.status)
+Index("ix_lifecycle_tasks_dedup", lifecycle_tasks.c.dedup_key)
+Index("ix_durable_timers_slot_gen", durable_timers.c.slot_id, durable_timers.c.generation)
+Index("ix_notifications_status", notifications.c.status)
+Index("ix_audit_checkpoints_app", audit_checkpoints.c.application_id)

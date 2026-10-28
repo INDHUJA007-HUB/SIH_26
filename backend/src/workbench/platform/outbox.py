@@ -105,7 +105,8 @@ async def dispatch_once(settings: Settings) -> int:
 async def main() -> None:
     settings = Settings()
     configure_logging()
-    start_worker_metrics()
+    with suppress(Exception):
+        start_worker_metrics()
     while True:
         try:
             await dispatch_once(settings)

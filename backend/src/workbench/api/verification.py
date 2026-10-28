@@ -29,8 +29,8 @@ def _check_institution_access(
     )
     if allowed:
         return
-    is_elevated = conn.scalar(text("SELECT wb.elevated()"))
-    if not is_elevated:
+    is_supervisor = conn.scalar(text("SELECT wb.elevated() AND wb.has_role('supervisor')"))
+    if not is_supervisor:
         raise ApplicationError("ACCESS_DENIED", "Access to institution is denied", 403)
 
 

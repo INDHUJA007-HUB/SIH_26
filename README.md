@@ -51,6 +51,37 @@ Linux/macOS users can run `sh scripts/container.sh up`. The API documentation is
 
 Temporary rendered page images used only for visual QA are intentionally excluded.
 
+## Run the full test suite
+
+Execute all 127 tests with zero skips across Phases 1 through 10:
+
+```powershell
+# PowerShell
+$env:WB_INTEGRATION_DATABASE_URL = "postgresql+psycopg://workbench:<password>@127.0.0.1:5433/workbench"
+$env:WB_FILE_INTEGRATION = "1"
+$env:WB_CHAOS_INTEGRATION = "1"
+uv run --project backend pytest backend/tests -q -rs
+```
+
+```bash
+# Bash / Linux / macOS
+export WB_INTEGRATION_DATABASE_URL="postgresql+psycopg://workbench:<password>@127.0.0.1:5433/workbench"
+export WB_FILE_INTEGRATION="1"
+export WB_CHAOS_INTEGRATION="1"
+uv run --project backend pytest backend/tests -q -rs
+```
+
+### Required Environment Variables
+
+- `WB_INTEGRATION_DATABASE_URL`: Connection string to migrated PostgreSQL on port 5433.
+- `WB_FILE_INTEGRATION=1`: Activates live ClamAV file scanning, networkless PDF parsing, and S3 upload sessions.
+- `WB_CHAOS_INTEGRATION=1`: Activates local parser fail-closed outage probes and outbox relay outage recovery tests.
+
+To run static type checking:
+```powershell
+uv run --project backend mypy --config-file backend/pyproject.toml backend/src/workbench
+```
+
 ## Evidence labels
 
 The report distinguishes claims by provenance:

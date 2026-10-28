@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import time
+from contextlib import suppress
 from datetime import timedelta
 from uuid import uuid4
 
@@ -285,8 +286,13 @@ def test_parser_outage_times_out_closed_then_recovers(h):
     prefix = [docker, "compose", "--env-file", ".env", "-f", "infra/compose/compose.yaml"]
 
     def compose(action):
+        cmd = (
+            [*prefix, "up", "-d", "--no-deps", "parser"]
+            if action == "start"
+            else [*prefix, "stop", "parser"]
+        )
         subprocess.run(  # noqa: S603 -- resolved CLI, fixed compose file/service, internal actions.
-            [*prefix, action, "parser"],
+            cmd,
             cwd=PROJECT_ROOT,
             check=True,
             stdout=subprocess.DEVNULL,
@@ -309,7 +315,8 @@ def test_parser_outage_times_out_closed_then_recovers(h):
         tasks = h.call("GET", f"/api/v1/applications/{application['id']}/tasks").json()
         assert any(task["kind"] == "SCAN_RETRY_REQUIRED" for task in tasks)
     finally:
-        compose("start")
+        with suppress(Exception):
+            compose("start")
     assert wait_result(h, evidence["id"])["status"] == "ACCEPTED"
 
 
@@ -327,8 +334,13 @@ def test_committed_outbox_survives_unavailable_temporal_and_repeated_delivery(h)
     prefix = [docker, "compose", "--env-file", ".env", "-f", "infra/compose/compose.yaml"]
 
     def compose(action):
+        cmd = (
+            [*prefix, "up", "-d", "--no-deps", "outbox-relay"]
+            if action == "start"
+            else [*prefix, "stop", "outbox-relay"]
+        )
         subprocess.run(  # noqa: S603 -- fixed local service and internal action values.
-            [*prefix, action, "outbox-relay"],
+            cmd,
             cwd=PROJECT_ROOT,
             check=True,
             stdout=subprocess.DEVNULL,
@@ -359,52 +371,54 @@ def test_committed_outbox_survives_unavailable_temporal_and_repeated_delivery(h)
                     available_at=now(),
                 )
             )
-    finally:
         compose("start")
 
-    def wait_receipt():
-        deadline = time.monotonic() + 30
+        def wait_receipt():
+            deadline = time.monotonic() + 30
+            while time.monotonic() < deadline:
+                with h.owner.connect() as connection:
+                    if connection.scalar(
+                        select(t.receipts.c.event_id).where(t.receipts.c.event_id == event)
+                    ):
+                        return
+                time.sleep(0.2)
+            pytest.fail("Committed event was not acknowledged after the relay recovered")
+
+        wait_receipt()
+        with h.owner.begin() as connection:
+            connection.execute(
+                update(t.outbox)
+                .where(t.outbox.c.id == event)
+                .values(
+                    delivered_at=None,
+                    lease_until=None,
+                    available_at=now(),
+                )
+            )
+        deadline = time.monotonic() + 15
         while time.monotonic() < deadline:
             with h.owner.connect() as connection:
-                if connection.scalar(
-                    select(t.receipts.c.event_id).where(t.receipts.c.event_id == event)
-                ):
-                    return
+                if connection.scalar(select(t.outbox.c.delivered_at).where(t.outbox.c.id == event)):
+                    assert (
+                        connection.scalar(
+                            select(func.count())
+                            .select_from(t.receipts)
+                            .where(t.receipts.c.event_id == event)
+                        )
+                        == 1
+                    )
+                    assert (
+                        connection.scalar(
+                            select(func.count())
+                            .select_from(t.tasks)
+                            .where(t.tasks.c.resource_id == event)
+                        )
+                        == 1
+                    )
+                    break
             time.sleep(0.2)
-        pytest.fail("Committed event was not acknowledged after the relay recovered")
-
-    wait_receipt()
-    with h.owner.begin() as connection:
-        connection.execute(
-            update(t.outbox)
-            .where(t.outbox.c.id == event)
-            .values(
-                delivered_at=None,
-                lease_until=None,
-                available_at=now(),
-            )
-        )
-    deadline = time.monotonic() + 15
-    while time.monotonic() < deadline:
-        with h.owner.connect() as connection:
-            if connection.scalar(select(t.outbox.c.delivered_at).where(t.outbox.c.id == event)):
-                assert (
-                    connection.scalar(
-                        select(func.count())
-                        .select_from(t.receipts)
-                        .where(t.receipts.c.event_id == event)
-                    )
-                    == 1
-                )
-                assert (
-                    connection.scalar(
-                        select(func.count())
-                        .select_from(t.tasks)
-                        .where(t.tasks.c.resource_id == event)
-                    )
-                    == 1
-                )
-                break
-        time.sleep(0.2)
-    else:
-        pytest.fail("Repeated workflow start was not acknowledged")
+        else:
+            pytest.fail("Repeated workflow start was not acknowledged")
+    finally:
+        with suppress(Exception):
+            compose("start")
