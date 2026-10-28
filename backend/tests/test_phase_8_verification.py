@@ -238,7 +238,7 @@ def test_authorized_officer_manual_confirmation(h):
                 access_role="officer",
                 granted_by=h.actors["admin"],
                 reason="Assigned review for scrutiny committee",
-                expires_at=datetime.now(UTC) + timedelta(days=7),
+                expires_at=datetime.now(UTC) + timedelta(days=6),
             )
         )
 
@@ -564,7 +564,7 @@ def test_unassigned_officer_cannot_read_another_institution_verification_rows(h)
                 access_role="officer",
                 granted_by=h.actors["admin"],
                 reason="Assigned review for institution inspection",
-                expires_at=datetime.now(UTC) + timedelta(days=7),
+                expires_at=datetime.now(UTC) + timedelta(days=6),
             )
         )
 

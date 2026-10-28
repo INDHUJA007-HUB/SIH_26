@@ -1069,6 +1069,113 @@ floor_plan_reconciliations = Table(
     time_created(),
 )
 
+# Phase 12: Rule-change governance, replay, dual control, and remedies
+rule_candidates = Table(
+    "rule_candidates",
+    metadata,
+    pk(),
+    Column("candidate_code", String(60), nullable=False, unique=True),
+    Column("target_academic_cycle", String(50), nullable=False),
+    Column("numeric_academic_year", Integer, nullable=False),
+    Column("effective_date", String(30), nullable=False),
+    Column("submission_date", String(30), nullable=False),
+    Column("evaluation_time", String(40), nullable=False),
+    Column("author_id", String(36), nullable=False),
+    Column("author_identity", String(100), nullable=False),
+    Column("approver_id", String(36)),
+    Column("approver_identity", String(100)),
+    Column("status", String(50), nullable=False, server_default="DRAFT"),
+    Column("four_gates", JSON, nullable=False),
+    Column("candidate_rules", JSON, nullable=False),
+    Column("release_manifest", JSON),
+    Column("manifest_hash", String(64)),
+    Column("published_release_id", String(36)),
+    Column("superseded_candidate_id", String(36)),
+    Column("conflicts_detected", JSON, nullable=False),
+    Column("what_if_banner", Boolean, nullable=False, server_default="true"),
+    Column("is_hypothetical", Boolean, nullable=False, server_default="false"),
+    time_created(),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
+
+published_rule_releases = Table(
+    "published_rule_releases",
+    metadata,
+    pk(),
+    Column("release_code", String(60), nullable=False, unique=True),
+    Column("candidate_id", String(36), ForeignKey("rule_candidates.id")),
+    Column("numeric_academic_year", Integer, nullable=False),
+    Column("academic_cycle", String(50), nullable=False),
+    Column("effective_date", String(30), nullable=False),
+    Column("submission_date", String(30), nullable=False),
+    Column("content_hash", String(64), nullable=False),
+    Column("manifest_hash", String(64), nullable=False),
+    Column("release_manifest", JSON, nullable=False),
+    Column("author_id", String(36), nullable=False),
+    Column("author_identity", String(100), nullable=False),
+    Column("approver_id", String(36), nullable=False),
+    Column("approver_identity", String(100), nullable=False),
+    Column("published_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("status", String(50), nullable=False, server_default="PUBLISHED"),
+    Column("superseded_by_release_id", String(36)),
+    Column("is_active", Boolean, nullable=False, server_default="true"),
+    Column("adverse_action_allowed", Boolean, nullable=False, server_default="false"),
+    time_created(),
+)
+
+rule_impact_simulations = Table(
+    "rule_impact_simulations",
+    metadata,
+    pk(),
+    Column("candidate_id", String(36), ForeignKey("rule_candidates.id"), nullable=False),
+    Column("simulated_by", String(36), nullable=False),
+    Column("total_runs_simulated", Integer, nullable=False, server_default="0"),
+    Column("what_if_banner", Boolean, nullable=False, server_default="true"),
+    Column("diff_summary", JSON, nullable=False),
+    Column("run_diffs", JSON, nullable=False),
+    Column("is_hypothetical", Boolean, nullable=False, server_default="false"),
+    time_created(),
+)
+
+rule_remedies = Table(
+    "rule_remedies",
+    metadata,
+    pk(),
+    institution(),
+    Column("application_id", String(36), ForeignKey("applications.id"), nullable=False),
+    Column("finding_id", String(36), nullable=False),
+    Column("rule_id", String(100), nullable=False),
+    Column("clause", String(100), nullable=False),
+    Column("remedy_type", String(50), nullable=False),
+    Column("is_advisory", Boolean, nullable=False, server_default="true"),
+    Column("guarantees_approval", Boolean, nullable=False, server_default="false"),
+    Column("advisory_wording", Text, nullable=False),
+    Column("calculation_trace", JSON, nullable=False),
+    Column("proposed_remedy_facts", JSON, nullable=False),
+    Column("re_evaluation_result", JSON, nullable=False),
+    Column("findings_closed", JSON, nullable=False),
+    Column("findings_remaining", JSON, nullable=False),
+    Column("allowed_at_current_stage", Boolean, nullable=False, server_default="true"),
+    Column("stage_restriction_reason", String(255)),
+    Column("is_simulated", Boolean, nullable=False, server_default="true"),
+    time_created(),
+)
+
+replay_bundles = Table(
+    "replay_bundles",
+    metadata,
+    pk(),
+    institution(),
+    Column("application_id", String(36), ForeignKey("applications.id"), nullable=False),
+    Column("run_id", String(36), ForeignKey("evaluation_runs.id"), nullable=False),
+    Column("bundle_hash", String(64), nullable=False),
+    Column("evaluator_version", String(50), nullable=False),
+    Column("manifest", JSON, nullable=False),
+    Column("files", JSON, nullable=False),
+    Column("disclaimer", Text, nullable=False),
+    time_created(),
+)
+
 for table in (
     applications,
     assignments,
@@ -1110,6 +1217,8 @@ for table in (
     media_similarity_matches,
     equipment_detections,
     floor_plan_reconciliations,
+    rule_remedies,
+    replay_bundles,
 ):
     Index(f"ix_{table.name}_owner_time", table.c.institution_id, table.c.created_at, table.c.id)
 Index("ix_outbox_delivery", outbox.c.delivered_at, outbox.c.available_at, outbox.c.lease_until)
@@ -1198,3 +1307,8 @@ Index(
     equipment_detections.c.room_identifier,
 )
 Index("ix_floor_plan_reconciliations_app", floor_plan_reconciliations.c.application_id)
+Index("ix_rule_candidates_code", rule_candidates.c.candidate_code)
+Index("ix_published_rule_releases_code", published_rule_releases.c.release_code)
+Index("ix_rule_impact_simulations_cand", rule_impact_simulations.c.candidate_id)
+Index("ix_rule_remedies_app_finding", rule_remedies.c.application_id, rule_remedies.c.finding_id)
+Index("ix_replay_bundles_run", replay_bundles.c.run_id)

@@ -522,7 +522,7 @@ def test_phase_11_unassigned_officer_and_cross_tenant_denial(h):
                 reason=(
                     "Formal assignment to inspect Institution A equipment and spatial floor plans"
                 ),
-                expires_at=datetime.now(UTC) + timedelta(days=7),
+                expires_at=datetime.now(UTC) + timedelta(days=6),
             )
         )
 

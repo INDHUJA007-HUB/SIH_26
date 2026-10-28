@@ -397,7 +397,7 @@ def test_audit_and_access_history_with_phase_4_view_download_stream_outcomes(h):
                 access_role="officer",
                 granted_by=h.actors["admin"],
                 reason="Assigned review for access event inspection",
-                expires_at=datetime.now(UTC) + timedelta(days=7),
+                expires_at=datetime.now(UTC) + timedelta(days=6),
             )
         )
 
@@ -495,7 +495,7 @@ def test_checkpointed_audit_export_scoped_auditor_permission_and_integrity(h):
                 access_role="auditor",
                 granted_by=h.actors["admin"],
                 reason="Scoped audit inspection",
-                expires_at=datetime.now(UTC) + timedelta(days=7),
+                expires_at=datetime.now(UTC) + timedelta(days=6),
             )
         )
 
@@ -596,7 +596,7 @@ def test_full_traceability_upload_run_outage_officer_response_reassessment(h):
                 access_role="officer",
                 granted_by=h.actors["admin"],
                 reason="Assigned review for audit traceability",
-                expires_at=datetime.now(UTC) + timedelta(days=7),
+                expires_at=datetime.now(UTC) + timedelta(days=6),
             )
         )
 

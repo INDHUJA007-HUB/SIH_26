@@ -23,6 +23,9 @@ dependencies = [
     "pillow>=13,<14",
 ]
 
+[project.scripts]
+workbench = "workbench.cli:main"
+
 [dependency-groups]
 build = [
     "hatchling==1.28.0",

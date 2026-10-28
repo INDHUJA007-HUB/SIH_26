@@ -514,7 +514,7 @@ def test_api_endpoints_evaluations_and_findings(h) -> None:
                 application_id=app_id,
                 actor_id=h.actors["officer"],
                 access_role="officer",
-                expires_at=datetime.now(UTC) + timedelta(days=7),
+                expires_at=datetime.now(UTC) + timedelta(days=6),
                 granted_by=h.actors["admin"],
                 reason="Reviewing compliance evaluation",
             )
