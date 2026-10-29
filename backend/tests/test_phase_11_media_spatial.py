@@ -461,7 +461,7 @@ def test_phase_11_unassigned_officer_and_cross_tenant_denial(h):
                 room_identifier="Lab-Secret-A",
                 equipment_category="WORKSTATION",
                 declared_quantity=30,
-                model_mode="INFERENCE_RUN",
+                model_mode="HEURISTIC_SIMULATED",
                 model_name="yolo-vision-room-detector",
                 model_version="v2.4-lite",
                 detected_candidate_count=20,
@@ -543,3 +543,12 @@ def test_phase_11_unassigned_officer_and_cross_tenant_denial(h):
     assert resp_fp.status_code == 200, resp_fp.text
     assert len(resp_fp.json()) >= 1
     assert resp_fp.json()[0]["plan_name"] == "Ground Floor Wing A"
+
+
+def test_equipment_detection_model_mode_is_heuristic_simulated(h):
+    """Subphase 11.2: Equipment detection defaults to HEURISTIC_SIMULATED and is surfaced in capabilities."""
+    from workbench.modules.media_analysis import ModelMode
+
+    assert ModelMode.HEURISTIC_SIMULATED.value == "HEURISTIC_SIMULATED"
+    caps = h.call("GET", "/api/v1/capabilities").json()
+    assert caps["equipment_detection_mode"] == "HEURISTIC_SIMULATED"

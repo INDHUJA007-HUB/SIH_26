@@ -18,10 +18,7 @@ from sqlalchemy import select
 
 from workbench.adapters import tables as t
 
-DATABASE_URL = os.environ.get(
-    "WB_INTEGRATION_DATABASE_URL",
-    "postgresql+psycopg://workbench:workbench@127.0.0.1:5433/workbench",
-)
+DATABASE_URL = os.environ.get("WB_INTEGRATION_DATABASE_URL", "")
 
 pytestmark = pytest.mark.integration
 

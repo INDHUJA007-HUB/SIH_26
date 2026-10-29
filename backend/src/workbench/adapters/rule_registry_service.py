@@ -162,7 +162,10 @@ class RuleRegistryService:
 
         if not rel_row:
             # Seed default if none active
-            self._seed_with_conn(conn)
+            if self.engine is not None:
+                self.seed_default_rules()
+            else:
+                self._seed_with_conn(conn)
             rel_row = (
                 conn.execute(select(t.rule_releases).where(t.rule_releases.c.is_active.is_(True)))
                 .mappings()

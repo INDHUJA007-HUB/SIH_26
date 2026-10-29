@@ -37,7 +37,7 @@ This Handover Package provides the comprehensive operational index, architectura
 | **OpenAPI Specification** | `GET /openapi.json` | Auto-generated typed OpenAPI v3.1 schema covering all endpoints, parameters, and error responses. |
 | **Error Handling Catalogue** | `backend/src/workbench/platform/errors.py` | Structured application errors conforming to RFC 7807 (`ApplicationError`, `AccessDenied`, `NotFoundError`, `AuthenticationRequired`). |
 | **Transactional Outbox Events** | `backend/src/workbench/platform/outbox.py`, `tables.py` | Transactionally published domain events (`EvidenceSubmitted`, `EvaluationCompleted`, `RectificationRequested`, `RetentionPurgeCompleted`). |
-| **Provider Capability Matrix** | `backend/src/workbench/modules/verification/simulator.py` | Typed simulator registry tracking DigiLocker, AISHE, Council of Architecture, and Land Records status (`SIMULATED`, `live_coverage_available=False`). |
+| **Provider Capability Matrix** | `backend/src/workbench/modules/verification/simulator.py` | Typed simulator registry tracking AICTE historical, Fire Safety, and Land Records status (`SIMULATED`, `live_coverage_available=False`). Live government connectors (AISHE, MCA21, RoC) are not implemented in verification code; production connector is blocked by missing access. |
 
 ---
 
@@ -81,7 +81,7 @@ This Handover Package provides the comprehensive operational index, architectura
 
 | Artefact Category | Location / Reference | Description & Key Responsibilities |
 | :--- | :--- | :--- |
-| **Eight-Metric Qualification Report** | `benchmarks/evaluation/runner.py` | Measured accuracy: Digital Extraction (98.4%), Scanned Extraction (92.1%), Validation Accuracy (99.2%), Anomaly Recall (91.5%), Discrepancy Reliability (94.0%), p95 Latency (48s / 10 pages). |
+| **Eight-Metric Qualification Report** | `benchmarks/evaluation/runner.py` | Measured accuracy across benchmark fixtures: Digital Extraction (97.5%), Scanned Extraction (91.4%), Validation Accuracy (100.0%), Anomaly Recall (100.0%), Discrepancy Reliability (100.0%), p95 Latency (1.39s / 10 pages). Category 4 explicitly records 0% live source resolution (all simulated). Category 8 is explicitly labeled STUDY_PENDING_UNMEASURED (no human trial conducted; hypothesized 30% reduction is unmeasured). |
 | **Comprehensive Test Suite** | `backend/tests/` | Unit, property (Hypothesis), integration, contract, security, workflow replay, and acceptance tests covering Phases 0–15. |
 | **Static Verification Checks** | `backend/tools/check_infra.py`, `check_runbooks.py` | Automated CI checks validating Terraform configuration and operational runbooks. |
 | **Residual Risk Register** | `docs/security/RESIDUAL_RISKS.md` | Formally acknowledged pilot limitations (simulated provider mode, advisory machine findings, manual fallback requirements). |

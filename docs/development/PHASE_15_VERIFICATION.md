@@ -45,7 +45,7 @@ Success: no issues found in 144 source files
 
 ### Command
 ```powershell
-$env:WB_INTEGRATION_DATABASE_URL="postgresql+psycopg://workbench:Xv4ipIqotnYt3cIymQH6LpfoGJF1zksi@127.0.0.1:5433/workbench"; backend\.venv\Scripts\pytest.exe backend/tests/test_phase_15_operations_retention.py -v
+$env:WB_INTEGRATION_DATABASE_URL="postgresql+psycopg://workbench:<password>@127.0.0.1:5433/workbench"; backend\.venv\Scripts\pytest.exe backend/tests/test_phase_15_operations_retention.py -v
 ```
 
 ### Output
@@ -77,7 +77,7 @@ backend\tests\test_phase_15_operations_retention.py::test_automated_access_sweep
 
 ### Command
 ```powershell
-$env:WB_INTEGRATION_DATABASE_URL="postgresql+psycopg://workbench:Xv4ipIqotnYt3cIymQH6LpfoGJF1zksi@127.0.0.1:5433/workbench"; backend\.venv\Scripts\pytest.exe backend/tests -q
+$env:WB_INTEGRATION_DATABASE_URL="postgresql+psycopg://workbench:<password>@127.0.0.1:5433/workbench"; backend\.venv\Scripts\pytest.exe backend/tests -q
 ```
 
 ### Output

@@ -32,6 +32,9 @@ def test_capabilities_exposes_provider_modes_and_blocked_connector(client):
     assert data["source_verification_mode"] == "SIMULATED"
     assert data["production_connector_status"] == "BLOCKED_BY_MISSING_ACCESS"
     assert data["live_source_verification"] is False
+    assert data["equipment_detection_mode"] == "HEURISTIC_SIMULATED"
+    assert data["ocr_engine"] == "SIMULATED_FALLBACK"
+    assert data["ocr_mode"] == "SIMULATED"
 
     providers = data["source_verification_providers"]
     assert len(providers) >= 4

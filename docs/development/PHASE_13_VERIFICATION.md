@@ -66,7 +66,7 @@ The test suite [`backend/tests/acceptance/test_failure_injection.py`](file:///c:
 ### 3.3 Raw Acceptance Test Output
 
 ```
-PS C:\Users\indhu\SIH_26> $env:WB_INTEGRATION_DATABASE_URL = "postgresql+psycopg://workbench:Xv4ipIqotnYt3cIymQH6LpfoGJF1zksi@127.0.0.1:5433/workbench"; $env:WB_FILE_INTEGRATION = "1"; $env:WB_CHAOS_INTEGRATION = "1"; uv run --project backend pytest backend/tests/acceptance -q -rs
+PS C:\Users\indhu\SIH_26> $env:WB_INTEGRATION_DATABASE_URL = "postgresql+psycopg://workbench:<password>@127.0.0.1:5433/workbench"; $env:WB_FILE_INTEGRATION = "1"; $env:WB_CHAOS_INTEGRATION = "1"; uv run --project backend pytest backend/tests/acceptance -q -rs
 ........                                                                 [100%]
 ============================== warnings summary ===============================
 backend\.venv\Lib\site-packages\fastapi\testclient.py:1
@@ -101,7 +101,7 @@ The automated security test suite [`backend/tests/security/test_owasp_security.p
 ### 4.1 Raw Security Test Output
 
 ```
-PS C:\Users\indhu\SIH_26> $env:WB_INTEGRATION_DATABASE_URL = "postgresql+psycopg://workbench:Xv4ipIqotnYt3cIymQH6LpfoGJF1zksi@127.0.0.1:5433/workbench"; uv run --project backend pytest backend/tests/security -q -rs
+PS C:\Users\indhu\SIH_26> $env:WB_INTEGRATION_DATABASE_URL = "postgresql+psycopg://workbench:<password>@127.0.0.1:5433/workbench"; uv run --project backend pytest backend/tests/security -q -rs
 ...........                                                              [100%]
 ============================== warnings summary ===============================
 backend\.venv\Lib\site-packages\fastapi\testclient.py:1
@@ -222,7 +222,7 @@ where arrival rate $\lambda = 0.39\text{ pages/s}$ sustained ($0.96\text{ pages/
 The automated recovery drill [`backend/tools/recovery_drill.py`](file:///c:/Users/indhu/SIH_26/backend/tools/recovery_drill.py) tests four reconciliation checkpoints across PostgreSQL, transactional outbox, quarantined/clean object storage, and durable cursors:
 
 ```
-PS C:\Users\indhu\SIH_26> $env:WB_INTEGRATION_DATABASE_URL = "postgresql+psycopg://workbench:Xv4ipIqotnYt3cIymQH6LpfoGJF1zksi@127.0.0.1:5433/workbench"; uv run --project backend python backend/tools/recovery_drill.py
+PS C:\Users\indhu\SIH_26> $env:WB_INTEGRATION_DATABASE_URL = "postgresql+psycopg://workbench:<password>@127.0.0.1:5433/workbench"; uv run --project backend python backend/tools/recovery_drill.py
 ======================================================================
 STARTING WORKBENCH RECOVERY & RECONCILIATION QUALIFICATION DRILL
 Timestamp: 2026-10-28T13:42:41Z
@@ -247,7 +247,7 @@ Drill Summary:
 ## 7. Full Test Suite Execution Raw Output
 
 ```
-PS C:\Users\indhu\SIH_26> $env:WB_INTEGRATION_DATABASE_URL = "postgresql+psycopg://workbench:Xv4ipIqotnYt3cIymQH6LpfoGJF1zksi@127.0.0.1:5433/workbench"; $env:WB_FILE_INTEGRATION = "1"; $env:WB_CHAOS_INTEGRATION = "1"; uv run --project backend pytest backend/tests -q -rs
+PS C:\Users\indhu\SIH_26> $env:WB_INTEGRATION_DATABASE_URL = "postgresql+psycopg://workbench:<password>@127.0.0.1:5433/workbench"; $env:WB_FILE_INTEGRATION = "1"; $env:WB_CHAOS_INTEGRATION = "1"; uv run --project backend pytest backend/tests -q -rs
 ........................................................................ [ 43%]
 ........................................................................ [ 87%]
 .....................                                                    [100%]

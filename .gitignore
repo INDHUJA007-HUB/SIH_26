@@ -5,6 +5,14 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+# Terraform state and variables
+*.tfvars
+!*.tfvars.example
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+
 # Local environments and secrets
 .env
 .env.*

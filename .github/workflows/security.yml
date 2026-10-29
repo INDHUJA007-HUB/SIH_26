@@ -16,6 +16,7 @@ jobs:
       - run: uv sync --frozen --group dev --group spikes
       - run: mkdir -p ../artifacts
       - run: uv run python tools/check_secrets.py
+      - run: python ../scripts/check_secrets.py
       - run: uv run pip-audit --progress-spinner off --format json --output ../artifacts/dependency-audit.json
       - run: uv run cyclonedx-py environment --output-reproducible --of JSON -o ../artifacts/sbom.cdx.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

@@ -29,10 +29,9 @@ from workbench.adapters.audit_verifier import verify_stream
 
 def run_recovery_drill() -> dict[str, object]:
     """Execute four-checkpoint disaster recovery reconciliation drill."""
-    db_url = os.environ.get(
-        "WB_INTEGRATION_DATABASE_URL",
-        "postgresql+psycopg://workbench:Xv4ipIqotnYt3cIymQH6LpfoGJF1zksi@127.0.0.1:5433/workbench",
-    )
+    db_url = os.environ.get("WB_INTEGRATION_DATABASE_URL")
+    if not db_url:
+        raise RuntimeError("WB_INTEGRATION_DATABASE_URL environment variable must be set")
     engine = create_engine(db_url)
     start_time = time.perf_counter()
     checkpoints: list[dict[str, str]] = []

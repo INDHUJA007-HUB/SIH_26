@@ -53,7 +53,7 @@ Temporary rendered page images used only for visual QA are intentionally exclude
 
 ## Run the full test suite
 
-Execute all 144 tests with zero skips across Phases 1 through 12:
+Execute all 179 tests with zero skips across Phases 0 through 15:
 
 ```powershell
 # PowerShell

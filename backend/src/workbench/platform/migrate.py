@@ -12,6 +12,14 @@ def main() -> None:
     settings = Settings()
     configure_roles(settings)
     seed_domain(settings)
+    from workbench.adapters.rule_registry_service import RuleRegistryService
+    from workbench.platform.database import build_engine
+
+    owner_engine = build_engine(settings.database_url.get_secret_value())
+    try:
+        RuleRegistryService(owner_engine).seed_default_rules()
+    finally:
+        owner_engine.dispose()
 
 
 if __name__ == "__main__":

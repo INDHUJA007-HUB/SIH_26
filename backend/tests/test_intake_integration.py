@@ -93,6 +93,9 @@ class Harness:
                         jurisdiction="TN",
                     )
                 )
+        from workbench.adapters.rule_registry_service import RuleRegistryService
+
+        RuleRegistryService(self.owner).seed_default_rules()
         self.app = create_app(self.settings)
         self.context = TestClient(self.app)
         self.client = self.context.__enter__()

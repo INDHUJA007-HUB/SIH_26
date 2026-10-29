@@ -283,6 +283,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "regulatory_rule_publication": False,
             "official_decisions": False,
             "equipment_detection_mode": "HEURISTIC_SIMULATED",
+            "ocr_engine": "SIMULATED_FALLBACK",
+            "ocr_mode": "SIMULATED",
             "fixture_endpoint": True,
             "persisted_authorization": config.domain_enabled,
             "immutable_submissions": config.domain_enabled,

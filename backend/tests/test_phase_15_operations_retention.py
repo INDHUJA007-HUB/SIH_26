@@ -7,6 +7,7 @@ docs/BACKEND_IMPLEMENTATION_PLAN.md Sections 5.1, 6.2, 9.3, 10, and 15.
 from __future__ import annotations
 
 from datetime import timedelta
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -14,6 +15,7 @@ from sqlalchemy import func, insert, select, update
 
 from workbench.adapters import tables as t
 from workbench.adapters.domain_store import now
+from workbench.adapters.object_storage import ObjectStorage
 from workbench.modules.operations.contracts import (
     ContainmentAction,
     ContainmentTargetType,
@@ -640,16 +642,28 @@ def test_retention_purge_workflow_refuses_original_evidence_under_hold_or_evalua
     assert orig_exec_data["purged_count"] == 0, "Zero original evidence items purged"
 
     # 5. Execute purge on DERIVATIVES_CACHES -> Expired derivative is purged
-    purge_deriv_exec = h.call(
-        "POST",
-        "/api/v1/retention/purge-runs",
-        actor="supervisor",
-        mfa=True,
-        json={"policy_id": deriv_policy_id, "dry_run": False, "max_items": 100},
-    )
-    assert purge_deriv_exec.status_code == 200
-    deriv_exec_data = purge_deriv_exec.json()
-    assert deriv_exec_data["purged_count"] >= 1, "Expired disposable derivative must be purged"
+    with patch.object(ObjectStorage, "delete", wraps=h.storage.delete) as mock_storage_delete:
+        purge_deriv_exec = h.call(
+            "POST",
+            "/api/v1/retention/purge-runs",
+            actor="supervisor",
+            mfa=True,
+            json={"policy_id": deriv_policy_id, "dry_run": False, "max_items": 100},
+        )
+        assert purge_deriv_exec.status_code == 200
+        deriv_exec_data = purge_deriv_exec.json()
+        assert deriv_exec_data["purged_count"] >= 1, "Expired disposable derivative must be purged"
+
+        # Assert underlying storage.delete was invoked for the expired derivative
+        assert mock_storage_delete.call_count >= 1, (
+            "storage.delete must be invoked when derivative is purged"
+        )
+        deleted_keys = [
+            c.args[0] if c.args else c.kwargs.get("key") for c in mock_storage_delete.call_args_list
+        ]
+        assert "derivatives/disposable_page.png" in deleted_keys, (
+            "Underlying storage object key must be deleted/tombstoned"
+        )
 
     # 6. CRITICAL VERIFICATION:
     # Confirm both original EvidenceVersion records remain untouched in DB
