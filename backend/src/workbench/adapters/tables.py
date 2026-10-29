@@ -1176,6 +1176,90 @@ replay_bundles = Table(
     time_created(),
 )
 
+pilot_scopes = Table(
+    "pilot_scopes",
+    metadata,
+    pk(),
+    Column("cohort_id", String(100), nullable=False),
+    Column("institution_ids", JSON, nullable=False),
+    Column("enabled_rule_release_id", String(100), nullable=True),
+    Column("provider_mode", String(40), nullable=False, server_default="SIMULATED"),
+    Column("outbound_notifications_enabled", Boolean, nullable=False, server_default="false"),
+    Column("advisory_mode_only", Boolean, nullable=False, server_default="true"),
+    Column("approval_officer_ids", JSON, nullable=False),
+    Column("activated_by", String(36), nullable=False),
+    Column("is_active", Boolean, nullable=False, server_default="true"),
+    time_created(),
+    Column("deactivated_at", DateTime(timezone=True), nullable=True),
+    CheckConstraint("advisory_mode_only = true", name="ck_pilot_advisory_mode_only"),
+)
+
+retention_policies = Table(
+    "retention_policies",
+    metadata,
+    pk(),
+    Column("data_class", String(50), nullable=False),
+    Column("retention_basis", String(50), nullable=False),
+    Column("retention_period_days", Integer, nullable=False),
+    Column("description", Text, nullable=True),
+    Column("approved_by", String(36), nullable=False),
+    Column("is_active", Boolean, nullable=False, server_default="true"),
+    time_created(),
+)
+
+legal_holds = Table(
+    "legal_holds",
+    metadata,
+    pk(),
+    Column("institution_id", String(36), ForeignKey("institutions.id"), nullable=True),
+    Column("application_id", String(36), ForeignKey("applications.id"), nullable=True),
+    Column("evidence_slot_id", String(36), nullable=True),
+    Column("matter_reference", String(150), nullable=False),
+    Column("legal_basis", Text, nullable=False),
+    Column("placed_by", String(36), nullable=False),
+    Column("placed_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("is_active", Boolean, nullable=False, server_default="true"),
+    Column("released_by", String(36), nullable=True),
+    Column("released_at", DateTime(timezone=True), nullable=True),
+    Column("release_reason", Text, nullable=True),
+)
+
+purge_manifests = Table(
+    "purge_manifests",
+    metadata,
+    pk(),
+    Column("policy_id", String(36), ForeignKey("retention_policies.id"), nullable=False),
+    Column("data_class", String(50), nullable=False),
+    Column("candidate_count", Integer, nullable=False, default=0),
+    Column("purged_count", Integer, nullable=False, default=0),
+    Column("skipped_held_count", Integer, nullable=False, default=0),
+    Column("skipped_dependency_count", Integer, nullable=False, default=0),
+    Column("purged_evidence_ids", JSON, nullable=False),
+    Column("purged_derivative_keys", JSON, nullable=False),
+    Column("bytes_freed", BigInteger, nullable=False, default=0),
+    Column("executed_by", String(36), nullable=False),
+    Column("executed_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("sha256_digest", String(64), nullable=False),
+    Column("audit_event_id", String(36), nullable=True),
+)
+
+incident_containments = Table(
+    "incident_containments",
+    metadata,
+    pk(),
+    Column("incident_id", String(36), nullable=False),
+    Column("target_type", String(30), nullable=False),
+    Column("target_id", String(100), nullable=False),
+    Column("containment_action", String(50), nullable=False),
+    Column("reason", Text, nullable=False),
+    Column("contained_by", String(36), nullable=False),
+    Column("contained_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("active", Boolean, nullable=False, server_default="true"),
+    Column("released_by", String(36), nullable=True),
+    Column("released_at", DateTime(timezone=True), nullable=True),
+    Column("audit_event_id", String(36), nullable=True),
+)
+
 for table in (
     applications,
     assignments,
@@ -1312,3 +1396,15 @@ Index("ix_published_rule_releases_code", published_rule_releases.c.release_code)
 Index("ix_rule_impact_simulations_cand", rule_impact_simulations.c.candidate_id)
 Index("ix_rule_remedies_app_finding", rule_remedies.c.application_id, rule_remedies.c.finding_id)
 Index("ix_replay_bundles_run", replay_bundles.c.run_id)
+Index("ix_pilot_scopes_cohort", pilot_scopes.c.cohort_id)
+Index("ix_pilot_scopes_active", pilot_scopes.c.is_active)
+Index("ix_retention_policies_class", retention_policies.c.data_class)
+Index("ix_legal_holds_app", legal_holds.c.application_id)
+Index("ix_legal_holds_inst", legal_holds.c.institution_id)
+Index("ix_legal_holds_active", legal_holds.c.is_active)
+Index("ix_purge_manifests_policy", purge_manifests.c.policy_id)
+Index(
+    "ix_incident_containments_target",
+    incident_containments.c.target_type,
+    incident_containments.c.target_id,
+)

@@ -442,7 +442,7 @@ class MediaAnalysisService:
         room_identifier: str,
         declared_quantity: int,
         equipment_category: str = EquipmentCategory.WORKSTATION.value,
-        model_mode: str = ModelMode.INFERENCE_RUN.value,
+        model_mode: str = ModelMode.HEURISTIC_SIMULATED.value,
         image_bytes: bytes | None = None,
     ) -> EquipmentDetectionRecord:
         """Run room-level visible equipment candidate detection.

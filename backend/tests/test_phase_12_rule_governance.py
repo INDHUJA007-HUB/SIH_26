@@ -12,6 +12,7 @@ from sqlalchemy import delete, insert, select, update
 from sqlalchemy.exc import DBAPIError
 
 from workbench.adapters import tables as t
+from workbench.adapters.rule_registry_service import RuleRegistryService
 from workbench.cli import replay_command
 from workbench.modules.rule_governance.contracts import (
     DiffOutcome,
@@ -75,6 +76,18 @@ def test_simulation_changes_no_stored_run_finding_or_report(h):
                 requirement_name="Bandwidth Requirement",
                 outcome="DEFICIENT",
                 rationale="100 Mbps observed vs 300 Mbps required",
+            )
+        )
+        conn.execute(
+            insert(t.case_assignments).values(
+                id=str(uuid4()),
+                institution_id=inst_id,
+                application_id=app_id,
+                actor_id=h.actors["officer"],
+                access_role="officer",
+                granted_by=h.actors["admin"],
+                reason="Assigned review for simulation test",
+                expires_at=datetime.now(UTC) + timedelta(days=6),
             )
         )
 
@@ -746,3 +759,370 @@ def test_phase_12_unassigned_officer_and_cross_tenant_denial(h):
     )
     assert resp_bundle_assigned.status_code == 200, resp_bundle_assigned.text
     assert resp_bundle_assigned.json()["run_id"] == run_id
+
+
+def test_new_evaluation_run_uses_published_release_and_differs_from_old_run(h):
+    """Confirm EvaluationService reads published_rule_releases.
+
+    A new evaluation run uses the newly published release and differs from the old run,
+    while the old run row, findings, and manifest hash in evaluation_runs stay completely unchanged.
+    """
+    inst_id = h.institutions["a"]
+    app = h.create(actor="a")
+    app_id = app["id"]
+
+    # 1. Seed base rules and assign officer
+    rule_service = RuleRegistryService(h.owner)
+    base_release, _ = rule_service.get_active_release()
+    base_release_id = base_release.id
+    base_content_hash = base_release.content_hash
+
+    now = datetime.now(UTC)
+    with h.owner.begin() as conn:
+        conn.execute(
+            insert(t.assignments).values(
+                id=str(uuid4()),
+                institution_id=inst_id,
+                application_id=app_id,
+                actor_id=h.actors["officer"],
+                access_role="officer",
+                expires_at=now + timedelta(days=6),
+                granted_by=h.actors["admin"],
+                reason="Reviewing compliance evaluation across releases",
+            )
+        )
+
+        # Declare claims: intake 500, bandwidth 150 Mbps
+        conn.execute(
+            insert(t.claims).values(
+                id=str(uuid4()),
+                institution_id=inst_id,
+                application_id=app_id,
+                subject="institution",
+                predicate="intake",
+                declared_value="500",
+            )
+        )
+        conn.execute(
+            insert(t.claims).values(
+                id=str(uuid4()),
+                institution_id=inst_id,
+                application_id=app_id,
+                subject="institution",
+                predicate="bandwidth_mbps",
+                declared_value="150",
+            )
+        )
+
+    # 2. Trigger Run 1 under baseline release
+    # (requires 300 Mbps for 500 intake -> POTENTIAL_DEFICIENCY)
+    resp1 = h.call(
+        "POST",
+        f"/api/v1/applications/{app_id}/evaluations",
+        actor="officer",
+        mfa=True,
+        json={"evaluation_as_of": "2026-10-26", "execution_mode": "DEMONSTRATION"},
+    )
+    assert resp1.status_code == 200, resp1.text
+    run1_data = resp1.json()
+    run1_id = run1_data["run_id"]
+
+    # Check baseline outcomes in DB
+    with h.owner.begin() as conn:
+        r1_db = (
+            conn.execute(select(t.evaluation_runs).where(t.evaluation_runs.c.id == run1_id))
+            .mappings()
+            .one()
+        )
+        assert r1_db["rule_release_id"] == base_release_id
+        assert r1_db["manifest"]["rule_release_sha256"] == base_content_hash
+
+        bw_out_1 = conn.scalar(
+            select(t.requirement_outcomes.c.outcome).where(
+                t.requirement_outcomes.c.run_id == run1_id,
+                t.requirement_outcomes.c.rule_id == "INFRA.BANDWIDTH",
+            )
+        )
+        assert bw_out_1 == "POTENTIAL_DEFICIENCY", f"Expected POTENTIAL_DEFICIENCY, got {bw_out_1}"
+
+    # 3. Create candidate rule lowering bandwidth requirement to 100 Mbps
+    cand_resp = h.call(
+        "POST",
+        "/api/v1/rule-candidates",
+        actor="supervisor",
+        mfa=True,
+        json={
+            "candidate_code": f"APH-CAND-BW100-{uuid4().hex[:8]}",
+            "target_academic_cycle": "2027-28",
+            "numeric_academic_year": 2027,
+            "effective_date": "2027-04-01",
+            "submission_date": "2027-01-15",
+            "evaluation_time": "SUBMISSION",
+            "candidate_rules": [
+                {
+                    "rule_id": "INFRA.BANDWIDTH",
+                    "version": 2,
+                    "clause": "Annexure 4.1 note 5",
+                    "printed_page": 92,
+                    "pdf_page": 108,
+                    "parameters": {"minimum": 100},
+                    "dsl_expression": {
+                        "operation": "threshold_lookup",
+                        "input_field": "intake",
+                        "target_field": "bandwidth_mbps",
+                        "comparator": "gte",
+                        "tiers": [{"min": 1, "max": 999999, "required": 100, "unit": "Mbps"}],
+                        "dimension": "COMPLIANCE",
+                    },
+                }
+            ],
+            "is_hypothetical": False,
+        },
+    )
+    assert cand_resp.status_code == 200, cand_resp.text
+    candidate_id = cand_resp.json()["id"]
+
+    # 4. Satisfy qualification gates, approve by second identity, and publish
+    gates_resp = h.call(
+        "POST",
+        f"/api/v1/rule-candidates/{candidate_id}/gates",
+        actor="supervisor",
+        mfa=True,
+        json={
+            "source_text_checked": True,
+            "scope_and_ambiguity_resolved": True,
+            "software_behaviour_tested": True,
+            "authorized_policy_approved": True,
+        },
+    )
+    assert gates_resp.status_code == 200, gates_resp.text
+
+    appr_resp = h.call(
+        "POST",
+        f"/api/v1/rule-candidates/{candidate_id}/approve",
+        actor="officer",
+        mfa=True,
+        json={"approver_identity": "council_approver_beta"},
+    )
+    assert appr_resp.status_code == 200, appr_resp.text
+
+    pub_resp = h.call(
+        "POST",
+        f"/api/v1/rule-candidates/{candidate_id}/publish",
+        actor="supervisor",
+        mfa=True,
+    )
+    assert pub_resp.status_code == 200, pub_resp.text
+    pub_data = pub_resp.json()
+    published_release_id = pub_data["published_release_id"]
+    published_manifest_hash = pub_data["manifest_hash"]
+
+    # 5. Trigger Run 2 under newly published release (requires 100 Mbps, facts=150 Mbps -> PASS)
+    resp2 = h.call(
+        "POST",
+        f"/api/v1/applications/{app_id}/evaluations",
+        actor="officer",
+        mfa=True,
+        json={"evaluation_as_of": "2027-04-01", "execution_mode": "DEMONSTRATION"},
+    )
+    assert resp2.status_code == 200, resp2.text
+    run2_data = resp2.json()
+    run2_id = run2_data["run_id"]
+    assert run2_id != run1_id
+
+    # 6. Verify Run 2 used the published release and evaluated INFRA.BANDWIDTH as PASS
+    with h.owner.begin() as conn:
+        r2_db = (
+            conn.execute(select(t.evaluation_runs).where(t.evaluation_runs.c.id == run2_id))
+            .mappings()
+            .one()
+        )
+        assert r2_db["rule_release_id"] == published_release_id
+        assert r2_db["manifest"]["rule_release_sha256"] == published_manifest_hash
+
+        # Requirement outcome for INFRA.BANDWIDTH in Run 2 must be PASS
+        bw_out_2 = conn.scalar(
+            select(t.requirement_outcomes.c.outcome).where(
+                t.requirement_outcomes.c.run_id == run2_id,
+                t.requirement_outcomes.c.rule_id == "INFRA.BANDWIDTH",
+            )
+        )
+        assert bw_out_2 == "PASS", (
+            f"Expected PASS for bandwidth under published release, got {bw_out_2}"
+        )
+
+        # 7. CRITICAL: Verify Run 1 row in evaluation_runs remains COMPLETELY UNCHANGED
+        r1_db_after = (
+            conn.execute(select(t.evaluation_runs).where(t.evaluation_runs.c.id == run1_id))
+            .mappings()
+            .one()
+        )
+        assert r1_db_after["rule_release_id"] == base_release_id
+        assert r1_db_after["manifest"]["rule_release_sha256"] == base_content_hash
+        assert r1_db_after["manifest_hash"] == r1_db["manifest_hash"]
+        assert r1_db_after["rule_release_id"] != published_release_id
+
+        # Run 1 outcome for INFRA.BANDWIDTH is STILL POTENTIAL_DEFICIENCY
+        bw_out_1_after = conn.scalar(
+            select(t.requirement_outcomes.c.outcome).where(
+                t.requirement_outcomes.c.run_id == run1_id,
+                t.requirement_outcomes.c.rule_id == "INFRA.BANDWIDTH",
+            )
+        )
+        assert bw_out_1_after == "POTENTIAL_DEFICIENCY"
+
+
+def test_applicant_and_unassigned_officer_cannot_read_other_institutions_simulation_diffs(h):
+    """Verify read policies and tenant isolation for rule_impact_simulations and rule_candidates:
+
+    1. Applicant actors get 403 ACCESS_DENIED for simulation endpoints.
+    2. An unassigned officer cannot read other institutions' diffs in simulation runs.
+    3. Elevated supervisors see all runs across institutions.
+    """
+    inst_a = h.institutions["a"]
+    inst_b = h.institutions["b"]
+    app_a = h.create(actor="a")["id"]
+    app_b = h.create(actor="b")["id"]
+
+    now = datetime.now(UTC)
+    run_a_id = str(uuid4())
+    run_b_id = str(uuid4())
+
+    with h.owner.begin() as conn:
+        # Create evaluation run for Institution A
+        conn.execute(
+            insert(t.evaluation_runs).values(
+                id=run_a_id,
+                institution_id=inst_a,
+                application_id=app_a,
+                rule_release_id="rel-base",
+                manifest_hash="hash-base-a",
+                evaluation_as_of="2026-10-26",
+                execution_mode="DEMONSTRATION",
+                compliance_status="DEFICIENT",
+                created_at=now,
+            )
+        )
+        conn.execute(
+            insert(t.requirement_outcomes).values(
+                id=str(uuid4()),
+                run_id=run_a_id,
+                institution_id=inst_a,
+                application_id=app_a,
+                rule_id="APH-INFRA-BW-001",
+                requirement_name="Bandwidth Requirement",
+                outcome="DEFICIENT",
+                created_at=now,
+            )
+        )
+
+        # Create evaluation run for Institution B
+        conn.execute(
+            insert(t.evaluation_runs).values(
+                id=run_b_id,
+                institution_id=inst_b,
+                application_id=app_b,
+                rule_release_id="rel-base",
+                manifest_hash="hash-base-b",
+                evaluation_as_of="2026-10-26",
+                execution_mode="DEMONSTRATION",
+                compliance_status="DEFICIENT",
+                created_at=now,
+            )
+        )
+        conn.execute(
+            insert(t.requirement_outcomes).values(
+                id=str(uuid4()),
+                run_id=run_b_id,
+                institution_id=inst_b,
+                application_id=app_b,
+                rule_id="APH-INFRA-BW-001",
+                requirement_name="Bandwidth Requirement",
+                outcome="DEFICIENT",
+                created_at=now,
+            )
+        )
+
+        # Assign officer to Institution A ONLY
+        conn.execute(
+            insert(t.case_assignments).values(
+                id=str(uuid4()),
+                institution_id=inst_a,
+                application_id=app_a,
+                actor_id=h.actors["officer"],
+                access_role="officer",
+                granted_by=h.actors["admin"],
+                reason="Assigned review for Institution A only",
+                expires_at=now + timedelta(days=6),
+            )
+        )
+
+    # Create candidate
+    cand_resp = h.call(
+        "POST",
+        "/api/v1/rule-candidates",
+        actor="supervisor",
+        mfa=True,
+        json={
+            "candidate_code": f"APH-CAND-ISOLATION-{uuid4().hex[:8]}",
+            "target_academic_cycle": "2027-28",
+            "numeric_academic_year": 2027,
+            "effective_date": "2027-04-01",
+            "submission_date": "2027-01-15",
+            "evaluation_time": "SUBMISSION",
+            "candidate_rules": [
+                {
+                    "rule_id": "APH-INFRA-BW-001",
+                    "version": 2,
+                    "clause": "Clause 4.1",
+                    "printed_page": 45,
+                    "pdf_page": 61,
+                    "parameters": {"min_bandwidth_mbps": 100},
+                    "applicability": {},
+                    "dsl_expression": {},
+                }
+            ],
+            "is_hypothetical": False,
+        },
+    )
+    assert cand_resp.status_code == 200, cand_resp.text
+    candidate_id = cand_resp.json()["id"]
+
+    # 1. Applicant attempting to simulate or read simulations -> 403 ACCESS_DENIED
+    sim_app = h.call("POST", f"/api/v1/rule-candidates/{candidate_id}/simulate", actor="a")
+    assert sim_app.status_code == 403, f"Expected 403 for applicant, got {sim_app.status_code}"
+
+    sims_app = h.call("GET", f"/api/v1/rule-candidates/{candidate_id}/simulations", actor="a")
+    assert sims_app.status_code == 403, f"Expected 403 for applicant, got {sims_app.status_code}"
+
+    # 2. Officer assigned to Institution A runs simulation
+    sim_off = h.call(
+        "POST", f"/api/v1/rule-candidates/{candidate_id}/simulate", actor="officer", mfa=True
+    )
+    assert sim_off.status_code == 200, sim_off.text
+    diffs_off = sim_off.json()["run_diffs"]
+
+    # CRITICAL: Officer MUST see only Institution A's run, and NEVER Institution B's run!
+    app_ids_seen = [d["application_id"] for d in diffs_off]
+    assert app_a in app_ids_seen, f"Officer assigned to Inst A should see {app_a}"
+    assert app_b not in app_ids_seen, f"Officer unassigned to Inst B must NOT see {app_b}"
+
+    # 3. Officer queries GET simulations -> run_diffs must be filtered
+    get_sims_off = h.call(
+        "GET", f"/api/v1/rule-candidates/{candidate_id}/simulations", actor="officer", mfa=True
+    )
+    assert get_sims_off.status_code == 200, get_sims_off.text
+    for sim_record in get_sims_off.json():
+        for rd in sim_record.get("run_diffs", []):
+            assert rd["application_id"] != app_b, (
+                f"Unassigned officer leaked Institution B run diff: {rd}"
+            )
+
+    # 4. Supervisor runs simulation -> sees all institutions (both A and B)
+    sim_sup = h.call(
+        "POST", f"/api/v1/rule-candidates/{candidate_id}/simulate", actor="supervisor", mfa=True
+    )
+    assert sim_sup.status_code == 200, sim_sup.text
+    sup_app_ids = [d["application_id"] for d in sim_sup.json()["run_diffs"]]
+    assert app_a in sup_app_ids
+    assert app_b in sup_app_ids

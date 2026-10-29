@@ -10,6 +10,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from workbench.adapters import tables as t
+from workbench.modules.operations.service import OperationsService as CoreOperationsService
 from workbench.platform.errors import ApplicationError
 from workbench.workflows.contracts import OperationStatus
 
@@ -42,6 +43,47 @@ class OperationPausedError(ApplicationError):
 
 
 class OperationsService:
+    def __init__(self, store: Any = None) -> None:
+        self.store = store
+        self._core = CoreOperationsService(store) if store is not None else None
+
+    def get_health_summary(self, principal: Any, window_minutes: int = 60) -> Any:
+        if not self._core:
+            raise ValueError("DomainStore required for OperationsService instance operations")
+        return self._core.get_health_summary(principal, window_minutes)
+
+    def contain_incident(self, principal: Any, command: Any, request_id: str) -> Any:
+        if not self._core:
+            raise ValueError("DomainStore required for OperationsService instance operations")
+        return self._core.contain_incident(principal, command, request_id)
+
+    def release_containment(
+        self, principal: Any, containment_id: str, command: Any, request_id: str
+    ) -> Any:
+        if not self._core:
+            raise ValueError("DomainStore required for OperationsService instance operations")
+        return self._core.release_containment(principal, containment_id, command, request_id)
+
+    def list_containments(self, principal: Any, active_only: bool = True) -> Any:
+        if not self._core:
+            raise ValueError("DomainStore required for OperationsService instance operations")
+        return self._core.list_containments(principal, active_only)
+
+    def reconcile_operations(self, principal: Any, command: Any, request_id: str) -> Any:
+        if not self._core:
+            raise ValueError("DomainStore required for OperationsService instance operations")
+        return self._core.reconcile_operations(principal, command, request_id)
+
+    def sweep_expired_access(self, principal: Any, request_id: str) -> Any:
+        if not self._core:
+            raise ValueError("DomainStore required for OperationsService instance operations")
+        return self._core.sweep_expired_access(principal, request_id)
+
+    def get_access_review_summary(self, principal: Any) -> Any:
+        if not self._core:
+            raise ValueError("DomainStore required for OperationsService instance operations")
+        return self._core.get_access_review_summary(principal)
+
     @staticmethod
     def create_or_get_operation(
         connection: Any,

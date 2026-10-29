@@ -50,7 +50,7 @@ class EvaluationService:
         execution_mode: str,
     ) -> dict[str, Any]:
         # 1. Fetch active rule release and its member rules
-        release, rules = self.rule_service.get_active_release(conn)
+        release, rules = self.rule_service.get_active_release(conn, as_of_date=evaluation_as_of)
 
         # 2. Fetch latest frozen fact-set for application
         fact_set_row = (

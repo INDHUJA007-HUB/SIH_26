@@ -1,6 +1,8 @@
 """Phase 2–4 HTTP contracts. Handlers delegate to transactional application boundaries."""
 
+from datetime import UTC, datetime
 from typing import Any, Literal
+from uuid import uuid4
 
 import anyio
 from botocore.exceptions import ClientError
@@ -8,7 +10,7 @@ from fastapi import APIRouter, Depends, FastAPI, Header, Query, Request
 from fastapi.responses import Response, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from sqlalchemy import select
+from sqlalchemy import insert, select, text, update
 from sqlalchemy.exc import IntegrityError
 from starlette.types import Receive, Scope, Send
 
@@ -28,7 +30,7 @@ from workbench.api.verification import create_verification_router
 from workbench.contracts.intake import Principal
 from workbench.platform.config import Settings
 from workbench.platform.database import build_engine
-from workbench.platform.errors import AuthenticationRequired, NotFoundError
+from workbench.platform.errors import ApplicationError, AuthenticationRequired, NotFoundError
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -521,6 +523,118 @@ def register_intake_api(app: FastAPI, settings: Settings) -> DomainStore:
                 connection, operation_id, reason or "Cancelled by operator"
             )
 
+    class PilotScopeActivationBody(BaseModel):
+        cohort_id: str
+        institution_ids: list[str]
+        enabled_rule_release_id: str | None = None
+        provider_mode: str = "SIMULATED"
+        outbound_notifications_enabled: bool = False
+        advisory_mode_only: bool = True
+        approval_officer_ids: list[str] = Field(default_factory=list)
+
+    @router.post("/operations/pilot-scope", tags=["operations"])
+    def activate_pilot_scope(
+        body: PilotScopeActivationBody,
+        actor: Principal = Depends(principal),
+    ) -> Any:
+        with store.transaction(actor) as connection:
+            # 1. Access Control: Must be elevated supervisor or identity_admin
+            has_supervisor = connection.scalar(
+                text("SELECT wb.has_role('supervisor') OR wb.has_role('identity_admin')")
+            )
+            is_elevated = connection.scalar(text("SELECT wb.elevated()"))
+            if not has_supervisor:
+                raise ApplicationError(
+                    "ACCESS_DENIED", "Pilot scope activation requires supervisor role", 403
+                )
+            if not is_elevated:
+                raise ApplicationError(
+                    "ACCESS_DENIED", "Pilot scope activation requires recent MFA elevation", 403
+                )
+
+            # 2. Gate 1: Advisory Mode MUST be True (auto-adverse action strictly forbidden)
+            if not body.advisory_mode_only:
+                raise ApplicationError(
+                    "CAPABILITY_GATE_VIOLATION",
+                    "Automated adverse action is prohibited; advisory_mode_only must be true",
+                    422,
+                )
+
+            # 3. Gate 2: Live Provider Mode requires verified live connector access
+            if body.provider_mode in ("RESTRICTED_LIVE", "OFFICIAL_LIVE"):
+                raise ApplicationError(
+                    "CAPABILITY_GATE_VIOLATION",
+                    "Live provider mode blocked: "
+                    "production connector status is BLOCKED_BY_MISSING_ACCESS. "
+                    "Live statutory credentials and signed data-sharing agreements are required.",
+                    422,
+                )
+
+            # 4. Gate 3: Outbound Notifications require verified SMTP/SES channel authorization
+            if body.outbound_notifications_enabled:
+                raise ApplicationError(
+                    "CAPABILITY_GATE_VIOLATION",
+                    "Outbound notifications blocked: "
+                    "requires verified SMTP/SES production credentials "
+                    "and recipient disclosure sign-off.",
+                    422,
+                )
+
+            # 5. Gate 4: If rule release specified, verify it exists and is published
+            if body.enabled_rule_release_id:
+                rel = (
+                    connection.execute(
+                        select(t.published_rule_releases).where(
+                            t.published_rule_releases.c.id == body.enabled_rule_release_id
+                        )
+                    )
+                    .mappings()
+                    .first()
+                )
+                if not rel:
+                    raise NotFoundError(f"Published rule release '{body.enabled_rule_release_id}'")
+
+            # 6. Deactivate existing active pilot scopes
+            now = datetime.now(UTC)
+            connection.execute(
+                update(t.pilot_scopes)
+                .where(t.pilot_scopes.c.is_active.is_(True))
+                .values(is_active=False, deactivated_at=now)
+            )
+
+            # 7. Insert new active pilot scope
+            scope_id = str(uuid4())
+            actor_id = connection.scalar(text("SELECT wb.actor_id()")) or "system"
+            connection.execute(
+                insert(t.pilot_scopes).values(
+                    id=scope_id,
+                    cohort_id=body.cohort_id,
+                    institution_ids=body.institution_ids,
+                    enabled_rule_release_id=body.enabled_rule_release_id,
+                    provider_mode=body.provider_mode,
+                    outbound_notifications_enabled=body.outbound_notifications_enabled,
+                    advisory_mode_only=body.advisory_mode_only,
+                    approval_officer_ids=body.approval_officer_ids,
+                    activated_by=actor_id,
+                    is_active=True,
+                    created_at=now,
+                )
+            )
+
+            return {
+                "id": scope_id,
+                "cohort_id": body.cohort_id,
+                "institution_ids": body.institution_ids,
+                "enabled_rule_release_id": body.enabled_rule_release_id,
+                "provider_mode": body.provider_mode,
+                "outbound_notifications_enabled": body.outbound_notifications_enabled,
+                "advisory_mode_only": body.advisory_mode_only,
+                "approval_officer_ids": body.approval_officer_ids,
+                "activated_by": actor_id,
+                "is_active": True,
+                "created_at": now.isoformat(),
+            }
+
     @router.get("/evidence/{version_id}/fields", tags=["extraction"])
     def get_evidence_fields_endpoint(
         version_id: str,
@@ -661,17 +775,21 @@ def register_intake_api(app: FastAPI, settings: Settings) -> DomainStore:
             store.application(connection, finding_row["application_id"])
             return evaluation_service.get_finding_evidence(id, conn=connection)
 
-    app.include_router(router)
-    app.include_router(create_verification_router(store, principal))
     from workbench.api.media_spatial import create_phase_11_router
+    from workbench.api.operations import create_operations_router
+    from workbench.api.retention import create_retention_router
     from workbench.api.review_rectification import create_phase_9_router
     from workbench.api.rule_governance import create_phase_12_router
     from workbench.api.tasks_alerts_audit import create_phase_10_router
 
+    app.include_router(create_operations_router(store, principal))
+    app.include_router(create_retention_router(store, principal, storage=storage))
     app.include_router(create_phase_9_router(store, principal))
     app.include_router(create_phase_10_router(store, principal))
     app.include_router(create_phase_11_router(store, principal))
     app.include_router(create_phase_12_router(store, principal))
+    app.include_router(create_verification_router(store, principal))
+    app.include_router(router)
     app.state.domain_store = store
     return store
 

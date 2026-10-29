@@ -59,6 +59,8 @@ class CandidateRuleChange(BaseModel):
     clause: str
     base_version: int | None = None
     proposed_parameters: dict[str, Any] = Field(default_factory=dict)
+    parameters: dict[str, Any] = Field(default_factory=dict)
+    dsl_expression: dict[str, Any] = Field(default_factory=dict)
     scope: str = "GLOBAL"
     rationale: str = ""
 

@@ -1,0 +1,177 @@
+[
+  {
+    "packet_id": "SYN-TEST-001-DIGITAL-COMPLIANT",
+    "institution_group": "group_engineering_north",
+    "template_family": "aicte_standard_v2024",
+    "split": "test",
+    "synthetic": true,
+    "language": "en",
+    "files": [
+      {
+        "reference": "synthetic/SYN-TEST-001/application_form.pdf",
+        "sha256": "1000000000000000000000000000000000000000000000000000000000000001",
+        "provenance": "synthetic_digital_generator"
+      },
+      {
+        "reference": "synthetic/SYN-TEST-001/isp_bandwidth_invoice.pdf",
+        "sha256": "1000000000000000000000000000000000000000000000000000000000000002",
+        "provenance": "synthetic_digital_generator"
+      }
+    ],
+    "ground_truth_ref": "synthetic/ground_truth/SYN-TEST-001.json",
+    "adjudication_ref": "adjudications/ADJ-2026-SYN-001.json"
+  },
+  {
+    "packet_id": "SYN-TEST-002-SCANNED-COMPLIANT",
+    "institution_group": "group_polytechnic_south",
+    "template_family": "legacy_scanned_tabular",
+    "split": "test",
+    "synthetic": true,
+    "language": "en",
+    "files": [
+      {
+        "reference": "synthetic/SYN-TEST-002/land_revenue_extract_scan.pdf",
+        "sha256": "2000000000000000000000000000000000000000000000000000000000000001",
+        "provenance": "synthetic_scanned_deg_generator_300dpi"
+      }
+    ],
+    "ground_truth_ref": "synthetic/ground_truth/SYN-TEST-002.json",
+    "adjudication_ref": "adjudications/ADJ-2026-SYN-002.json"
+  },
+  {
+    "packet_id": "SYN-TEST-003-DEFICIENT-BANDWIDTH",
+    "institution_group": "group_engineering_west",
+    "template_family": "aicte_standard_v2024",
+    "split": "test",
+    "synthetic": true,
+    "language": "en",
+    "files": [
+      {
+        "reference": "synthetic/SYN-TEST-003/isp_invoice_150mbps.pdf",
+        "sha256": "3000000000000000000000000000000000000000000000000000000000000001",
+        "provenance": "synthetic_digital_generator"
+      }
+    ],
+    "ground_truth_ref": "synthetic/ground_truth/SYN-TEST-003.json",
+    "adjudication_ref": "adjudications/ADJ-2026-SYN-003.json"
+  },
+  {
+    "packet_id": "SYN-TEST-004-ABSTENTION-CADRE-AMBIGUITY",
+    "institution_group": "group_pharmacy_central",
+    "template_family": "faculty_cadre_unresolved",
+    "split": "test",
+    "synthetic": true,
+    "language": "en",
+    "files": [
+      {
+        "reference": "synthetic/SYN-TEST-004/faculty_designation_roster.pdf",
+        "sha256": "4000000000000000000000000000000000000000000000000000000000000001",
+        "provenance": "synthetic_digital_generator"
+      }
+    ],
+    "ground_truth_ref": "synthetic/ground_truth/SYN-TEST-004.json",
+    "adjudication_ref": "adjudications/ADJ-2026-SYN-004.json"
+  },
+  {
+    "packet_id": "SYN-TEST-005-ANOMALY-FONT-INCONSISTENCY",
+    "institution_group": "group_adversarial_tamper",
+    "template_family": "planted_forensic_anomalies",
+    "split": "test",
+    "synthetic": true,
+    "language": "en",
+    "files": [
+      {
+        "reference": "synthetic/SYN-TEST-005/fire_noc_altered_date.pdf",
+        "sha256": "5000000000000000000000000000000000000000000000000000000000000001",
+        "provenance": "planted_anomaly_editor"
+      }
+    ],
+    "ground_truth_ref": "synthetic/ground_truth/SYN-TEST-005.json",
+    "adjudication_ref": "adjudications/ADJ-2026-SYN-005.json"
+  },
+  {
+    "packet_id": "SYN-TEST-006-ANOMALY-EXIF-DISCREPANCY",
+    "institution_group": "group_adversarial_tamper",
+    "template_family": "planted_forensic_anomalies",
+    "split": "test",
+    "synthetic": true,
+    "language": "en",
+    "files": [
+      {
+        "reference": "synthetic/SYN-TEST-006/campus_facility_photo_gps_mismatch.jpg",
+        "sha256": "6000000000000000000000000000000000000000000000000000000000000001",
+        "provenance": "planted_spatial_editor"
+      }
+    ],
+    "ground_truth_ref": "synthetic/ground_truth/SYN-TEST-006.json",
+    "adjudication_ref": "adjudications/ADJ-2026-SYN-006.json"
+  },
+  {
+    "packet_id": "SYN-TEST-007-CLEAN-BENIGN-CONTROL-A",
+    "institution_group": "group_clean_controls",
+    "template_family": "benign_clean_suite",
+    "split": "test",
+    "synthetic": true,
+    "language": "en",
+    "files": [
+      {
+        "reference": "synthetic/SYN-TEST-007/affidavit_uncompressed.pdf",
+        "sha256": "7000000000000000000000000000000000000000000000000000000000000001",
+        "provenance": "clean_baseline_generator"
+      }
+    ],
+    "ground_truth_ref": "synthetic/ground_truth/SYN-TEST-007.json",
+    "adjudication_ref": "adjudications/ADJ-2026-SYN-007.json"
+  },
+  {
+    "packet_id": "SYN-TEST-008-CLEAN-BENIGN-CONTROL-B",
+    "institution_group": "group_clean_controls",
+    "template_family": "benign_clean_suite",
+    "split": "test",
+    "synthetic": true,
+    "language": "en",
+    "files": [
+      {
+        "reference": "synthetic/SYN-TEST-008/building_plan_multipage.pdf",
+        "sha256": "8000000000000000000000000000000000000000000000000000000000000001",
+        "provenance": "clean_baseline_generator"
+      }
+    ],
+    "ground_truth_ref": "synthetic/ground_truth/SYN-TEST-008.json",
+    "adjudication_ref": "adjudications/ADJ-2026-SYN-008.json"
+  },
+  {
+    "packet_id": "SYN-TEST-009-SOURCE-OUTAGE-503",
+    "institution_group": "group_fault_tolerance",
+    "template_family": "external_provider_outages",
+    "split": "test",
+    "synthetic": true,
+    "language": "en",
+    "files": [
+      {
+        "reference": "synthetic/SYN-TEST-009/fire_noc_simulated_outage.pdf",
+        "sha256": "9000000000000000000000000000000000000000000000000000000000000001",
+        "provenance": "fault_injection_generator"
+      }
+    ],
+    "ground_truth_ref": "synthetic/ground_truth/SYN-TEST-009.json",
+    "adjudication_ref": "adjudications/ADJ-2026-SYN-009.json"
+  },
+  {
+    "packet_id": "SYN-TEST-010-DISCREPANCY-LOCALIZATION",
+    "institution_group": "group_discrepancy_reliability",
+    "template_family": "seeded_discrepancy_suite",
+    "split": "test",
+    "synthetic": true,
+    "language": "en",
+    "files": [
+      {
+        "reference": "synthetic/SYN-TEST-010/built_up_area_architect_certificate.pdf",
+        "sha256": "a000000000000000000000000000000000000000000000000000000000000001",
+        "provenance": "discrepancy_generator"
+      }
+    ],
+    "ground_truth_ref": "synthetic/ground_truth/SYN-TEST-010.json",
+    "adjudication_ref": "adjudications/ADJ-2026-SYN-010.json"
+  }
+]

@@ -127,3 +127,9 @@ class ObjectStorage:
             Metadata={"sha256": upload["sha256"]},
         )
         return str(result["VersionId"])
+
+    def delete(self, key: str, bucket: str | None = None, version: str | None = None) -> None:
+        args: dict[str, Any] = {"Bucket": bucket or self.clean, "Key": key}
+        if version:
+            args["VersionId"] = version
+        self.client.delete_object(**args)

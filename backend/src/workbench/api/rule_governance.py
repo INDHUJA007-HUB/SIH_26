@@ -79,6 +79,17 @@ class CalculateRemedyBody(BaseModel):
     is_open_window: bool = True
 
 
+ELEVATED_ROLES_SQL = (
+    "SELECT wb.elevated() AND ("
+    "wb.has_role('supervisor') OR wb.has_role('officer') OR "
+    "wb.has_role('admin') OR wb.has_role('identity_admin'))"
+)
+SUPERVISOR_OR_ADMIN_SQL = (
+    "SELECT wb.elevated() AND ("
+    "wb.has_role('supervisor') OR wb.has_role('admin') OR wb.has_role('identity_admin'))"
+)
+
+
 def create_phase_12_router(store: DomainStore, principal: Callable[..., Principal]) -> APIRouter:
     router = APIRouter(prefix="/api/v1", tags=["phase_12_rule_governance"])
 
@@ -88,6 +99,12 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
         actor: Principal = Depends(principal),
     ) -> dict[str, Any]:
         with store.transaction(actor) as conn:
+            is_elevated = conn.scalar(text(ELEVATED_ROLES_SQL))
+            if not is_elevated:
+                raise ApplicationError(
+                    "ACCESS_DENIED", "Applicants cannot manage rule candidates", 403
+                )
+
             # Check existing candidate code uniqueness
             existing = conn.execute(
                 select(t.rule_candidates.c.id).where(
@@ -161,6 +178,11 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
         actor: Principal = Depends(principal),
     ) -> list[dict[str, Any]]:
         with store.transaction(actor) as conn:
+            is_elevated = conn.scalar(text(ELEVATED_ROLES_SQL))
+            if not is_elevated:
+                raise ApplicationError(
+                    "ACCESS_DENIED", "Applicants cannot view rule candidates", 403
+                )
             rows = conn.execute(select(t.rule_candidates)).mappings().all()
             return [dict(r) for r in rows]
 
@@ -170,6 +192,11 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
         actor: Principal = Depends(principal),
     ) -> dict[str, Any]:
         with store.transaction(actor) as conn:
+            is_elevated = conn.scalar(text(ELEVATED_ROLES_SQL))
+            if not is_elevated:
+                raise ApplicationError(
+                    "ACCESS_DENIED", "Applicants cannot view rule candidates", 403
+                )
             row = (
                 conn.execute(
                     select(t.rule_candidates).where(t.rule_candidates.c.id == candidate_id)
@@ -188,6 +215,11 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
         actor: Principal = Depends(principal),
     ) -> dict[str, Any]:
         with store.transaction(actor) as conn:
+            is_elevated = conn.scalar(text(ELEVATED_ROLES_SQL))
+            if not is_elevated:
+                raise ApplicationError(
+                    "ACCESS_DENIED", "Applicants cannot update rule candidate gates", 403
+                )
             row = (
                 conn.execute(
                     select(t.rule_candidates).where(t.rule_candidates.c.id == candidate_id)
@@ -237,6 +269,14 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
         actor: Principal = Depends(principal),
     ) -> dict[str, Any]:
         with store.transaction(actor) as conn:
+            is_elevated = conn.scalar(text(ELEVATED_ROLES_SQL))
+            if not is_elevated:
+                raise ApplicationError(
+                    "ACCESS_DENIED", "Applicants cannot run or view rule candidate simulations", 403
+                )
+
+            is_supervisor_or_admin = conn.scalar(text(SUPERVISOR_OR_ADMIN_SQL))
+
             row = (
                 conn.execute(
                     select(t.rule_candidates).where(t.rule_candidates.c.id == candidate_id)
@@ -254,6 +294,16 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
             frozen_runs = []
             for r in run_rows:
                 run_id = r["id"]
+                # If actor is not a supervisor or admin (e.g. an officer),
+                # verify assignment access to this institution
+                if not is_supervisor_or_admin:
+                    has_access = conn.scalar(
+                        text("SELECT wb.can_access(:inst, :app, false) OR wb.manages(:inst)"),
+                        {"inst": r["institution_id"], "app": r["application_id"]},
+                    )
+                    if not has_access:
+                        continue
+
                 # Get requirement outcomes for baseline
                 outcomes = (
                     conn.execute(
@@ -290,8 +340,9 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
                     }
                 )
 
-            # If no stored runs exist yet in db, simulate against synthetic baseline run
-            if not frozen_runs:
+            # If no stored runs exist yet and actor is supervisor/admin,
+            # simulate against synthetic baseline run
+            if not frozen_runs and is_supervisor_or_admin:
                 frozen_runs = [
                     {
                         "run_id": "seed-run-1",
@@ -334,6 +385,52 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
 
             return sim_result.model_dump(mode="json")
 
+    @router.get("/rule-candidates/{candidate_id}/simulations")
+    def get_candidate_simulations_endpoint(
+        candidate_id: str,
+        actor: Principal = Depends(principal),
+    ) -> list[dict[str, Any]]:
+        with store.transaction(actor) as conn:
+            is_elevated = conn.scalar(text(ELEVATED_ROLES_SQL))
+            if not is_elevated:
+                raise ApplicationError(
+                    "ACCESS_DENIED", "Applicants cannot view rule candidate simulations", 403
+                )
+
+            is_supervisor_or_admin = conn.scalar(text(SUPERVISOR_OR_ADMIN_SQL))
+
+            sim_rows = (
+                conn.execute(
+                    select(t.rule_impact_simulations).where(
+                        t.rule_impact_simulations.c.candidate_id == candidate_id
+                    )
+                )
+                .mappings()
+                .all()
+            )
+
+            results: list[dict[str, Any]] = []
+            for sim in sim_rows:
+                sim_dict = dict(sim)
+                raw_diffs = sim_dict.get("run_diffs", [])
+                if not is_supervisor_or_admin:
+                    filtered_diffs = []
+                    for rd in raw_diffs:
+                        app_id = rd.get("application_id")
+                        inst_id = conn.scalar(
+                            select(t.applications.c.institution_id).where(
+                                t.applications.c.id == app_id
+                            )
+                        )
+                        if inst_id and conn.scalar(
+                            text("SELECT wb.can_access(:inst, :app, false) OR wb.manages(:inst)"),
+                            {"inst": inst_id, "app": app_id},
+                        ):
+                            filtered_diffs.append(rd)
+                    sim_dict["run_diffs"] = filtered_diffs
+                results.append(sim_dict)
+            return results
+
     @router.post("/rule-candidates/{candidate_id}/approve")
     def approve_candidate_endpoint(
         candidate_id: str,
@@ -341,6 +438,12 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
         actor: Principal = Depends(principal),
     ) -> dict[str, Any]:
         with store.transaction(actor) as conn:
+            is_elevated = conn.scalar(text(ELEVATED_ROLES_SQL))
+            if not is_elevated:
+                raise ApplicationError(
+                    "ACCESS_DENIED", "Applicants cannot approve rule candidates", 403
+                )
+
             row = (
                 conn.execute(
                     select(t.rule_candidates).where(t.rule_candidates.c.id == candidate_id)
@@ -411,6 +514,12 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
         actor: Principal = Depends(principal),
     ) -> dict[str, Any]:
         with store.transaction(actor) as conn:
+            is_elevated = conn.scalar(text(ELEVATED_ROLES_SQL))
+            if not is_elevated:
+                raise ApplicationError(
+                    "ACCESS_DENIED", "Applicants cannot publish rule releases", 403
+                )
+
             row = (
                 conn.execute(
                     select(t.rule_candidates).where(t.rule_candidates.c.id == candidate_id)

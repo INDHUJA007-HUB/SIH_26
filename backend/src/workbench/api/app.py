@@ -1,5 +1,6 @@
 """Development API through secure Phase 4 intake; no regulatory decision endpoints."""
 
+import logging
 import re
 import time
 from collections import Counter
@@ -15,11 +16,12 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from opentelemetry import propagate
-from sqlalchemy import text
+from sqlalchemy import select, text
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
 from workbench import __version__
+from workbench.adapters import tables as t
 from workbench.adapters.auth import JWTVerifier
 from workbench.adapters.fixtures import FixtureDirectory
 from workbench.api.body_limit import CommandBodyLimit
@@ -35,6 +37,7 @@ from workbench.platform.telemetry import (
     request_id_context,
 )
 
+logger = logging.getLogger("workbench.api.app")
 bearer = HTTPBearer(auto_error=False)
 
 
@@ -94,7 +97,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             with tracer.start_as_current_span("http.request", context=context) as span:
                 try:
                     response = await call_next(request)
-                except Exception:
+                except Exception as exc:
+                    logger.exception("Internal error in request: %s", exc)
                     log_event("request_failed", error_code="INTERNAL_ERROR")
                     response = JSONResponse(
                         {
@@ -235,7 +239,38 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             for c in registry.list_capabilities()
         ]
 
-        return {
+        pilot_scope_info: dict[str, Any] = {
+            "pilot_scope_active": False,
+            "active_cohort_id": None,
+            "advisory_mode_only": True,
+            "server_gate_enforced": True,
+        }
+        if domain_store is not None:
+            try:
+                with domain_store.system_transaction() as connection:
+                    scope = (
+                        connection.execute(
+                            select(t.pilot_scopes).where(t.pilot_scopes.c.is_active.is_(True))
+                        )
+                        .mappings()
+                        .first()
+                    )
+                    if scope:
+                        pilot_scope_info = {
+                            "pilot_scope_active": True,
+                            "active_cohort_id": scope["cohort_id"],
+                            "advisory_mode_only": scope["advisory_mode_only"],
+                            "pilot_institutions": scope["institution_ids"],
+                            "pilot_provider_mode": scope["provider_mode"],
+                            "outbound_notifications_enabled": scope[
+                                "outbound_notifications_enabled"
+                            ],
+                            "server_gate_enforced": True,
+                        }
+            except Exception as exc:
+                logger.debug("Failed to query pilot scope for capabilities: %s", exc)
+
+        result = {
             "release_scope": "PHASE_8_VERIFICATION"
             if config.domain_enabled
             else "PHASE_1_FOUNDATION",
@@ -247,11 +282,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "source_verification_providers": providers,
             "regulatory_rule_publication": False,
             "official_decisions": False,
+            "equipment_detection_mode": "HEURISTIC_SIMULATED",
             "fixture_endpoint": True,
             "persisted_authorization": config.domain_enabled,
             "immutable_submissions": config.domain_enabled,
             "quarantine_intake": config.domain_enabled,
+            "server_gate_enforced": True,
         }
+        result.update(pilot_scope_info)
+        return result
 
     @app.get("/api/v1/foundation/fixture", tags=["foundation"])
     async def own_fixture(actor: Actor = Depends(authenticated_actor)) -> dict[str, Any]:
