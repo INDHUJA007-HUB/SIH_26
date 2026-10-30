@@ -69,6 +69,30 @@ class RuleEvaluatorDSL:
             )
             return outcome, DocumentValidityStatus.UNKNOWN
 
+        if op == "evidence_presence":
+            entries = facts.get(dsl_expression["field"])
+            known = isinstance(entries, list)
+            present = known and any(
+                isinstance(e, dict) and e.get("slot") == dsl_expression["required_slot"]
+                for e in (entries if isinstance(entries, list) else [])
+            )
+            presence_outcome = (
+                ComplianceOutcome.PASS
+                if present
+                else ComplianceOutcome.POTENTIAL_DEFICIENCY
+                if known
+                else ComplianceOutcome.NOT_EVALUABLE
+            )
+            return RequirementOutcome(
+                rule_id=rule_id,
+                requirement_name="Evidence completeness",
+                outcome=presence_outcome,
+                rationale="Required evidence present"
+                if present
+                else "Required evidence missing or unknown",
+                calculation_trace={"presence_only": True},
+            ), DocumentValidityStatus.UNKNOWN
+
         if op == "threshold_lookup":
             return self._eval_threshold_lookup(
                 rule_id, dsl_expression, facts, claims, evaluation_as_of
@@ -86,13 +110,13 @@ class RuleEvaluatorDSL:
         outcome = RequirementOutcome(
             rule_id=rule_id,
             requirement_name=rule_id,
-            outcome=ComplianceOutcome.PASS,
-            rationale=f"Evaluated with parameters {params}",
+            outcome=ComplianceOutcome.NOT_EVALUABLE,
+            rationale=f"Unsupported rule operation: {op}",
             observed_value={"facts_checked": list(facts.keys())},
             expected_value=params,
             calculation_trace={"operation": "generic_check"},
         )
-        return outcome, DocumentValidityStatus.VALID_ON_REVIEW_DATE
+        return outcome, DocumentValidityStatus.UNKNOWN
 
     def _eval_threshold_lookup(
         self,
@@ -108,7 +132,7 @@ class RuleEvaluatorDSL:
         tiers = dsl.get("tiers", [])
 
         # Look for input value in claims or facts
-        input_val_raw = claims.get(input_field) or facts.get(input_field)
+        input_val_raw = claims.get(input_field, facts.get(input_field))
         if input_val_raw is None:
             return (
                 RequirementOutcome(
@@ -162,7 +186,7 @@ class RuleEvaluatorDSL:
         unit = matched_tier.get("unit", "Mbps")
 
         # Get target observed value
-        target_val_raw = claims.get(target_field) or facts.get(target_field)
+        target_val_raw = claims.get(target_field, facts.get(target_field))
         if target_val_raw is None:
             # Check if there is a nested dictionary with canonical_value (from unit normalization)
             for k in (target_field, "bandwidth", "internet_bandwidth"):
@@ -237,8 +261,8 @@ class RuleEvaluatorDSL:
         min_ratio = to_decimal(dsl.get("min_ratio", "0"))
         min_abs = to_decimal(dsl.get("min_absolute", "0"))
 
-        num_raw = claims.get(num_field) or facts.get(num_field)
-        denom_raw = claims.get(denom_field) or facts.get(denom_field)
+        num_raw = claims.get(num_field, facts.get(num_field))
+        denom_raw = claims.get(denom_field, facts.get(denom_field))
 
         if num_raw is None or denom_raw is None:
             return (

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlparse
 
@@ -29,81 +28,73 @@ class SignatureVerificationEngine:
     """Inspects PDF digital signatures and structured QR verification codes."""
 
     def inspect_pdf_signatures(self, content_bytes: bytes) -> dict[str, Any]:
-        """Inspect digital signatures in PDF content."""
-        if not content_bytes or len(content_bytes) < 10:
-            return {
-                "validation_type": "PDF_DIGITAL_SIGNATURE",
-                "status": SignatureStatus.MALFORMED,
-                "signer_identity": None,
-                "signer_role": SignerRole.UNKNOWN,
-                "simulated": True,
-                "details": {"error": "Content too short or empty"},
-            }
+        """Cryptographic integrity inspection, offline and fail-closed for issuer trust.
 
-        # Look for standard PDF digital signature dictionaries (/ByteRange and /Contents)
-        has_byterange = b"/ByteRange" in content_bytes
-        has_contents = b"/Contents" in content_bytes
-        has_subfilter = b"/SubFilter" in content_bytes or b"/adbe.pkcs7" in content_bytes
+        A valid signature container does not establish an authorized issuer or current
+        revocation status. Those require an approved trust and authorization policy.
+        """
+        import io
 
-        if not (has_byterange and has_contents):
-            return {
-                "validation_type": "PDF_DIGITAL_SIGNATURE",
-                "status": SignatureStatus.UNKNOWN,
-                "signer_identity": None,
-                "signer_role": SignerRole.UNKNOWN,
-                "simulated": True,
-                "details": {
-                    "reason": "No cryptographic digital signature container detected in PDF"
-                },
-            }
-
-        # Check for simulated revocation or corruption markers
-        if b"SYNTHETIC_REVOKED_CERTIFICATE" in content_bytes:
-            return {
-                "validation_type": "PDF_DIGITAL_SIGNATURE",
-                "status": SignatureStatus.REVOKED,
-                "signer_identity": "CN=Revoked Signing Authority, O=Statutory Body",
-                "signer_role": SignerRole.ISSUER,
-                "signing_time": datetime.now(UTC).isoformat(),
-                "certificate_sha256": hashlib.sha256(b"revoked-cert").hexdigest(),
-                "simulated": True,
-                "details": {
-                    "revocation_source": "CRL_CHECK_FAILURE",
-                    "reason": "Certificate revoked by issuing CA",
-                },
-            }
-
-        if b"SYNTHETIC_INVALID_CHAIN" in content_bytes:
-            return {
-                "validation_type": "PDF_DIGITAL_SIGNATURE",
-                "status": SignatureStatus.CHAIN_INCOMPLETE,
-                "signer_identity": "CN=Untrusted Intermediate Authority",
-                "signer_role": SignerRole.THIRD_PARTY,
-                "simulated": True,
-                "details": {"error": "Root certificate not in approved government trust store"},
-            }
-
-        # Determine signer identity and role from byte markers or standard heuristics
-        signer_id = "CN=Government Certification Authority, O=State Directorate"
-        signer_role = SignerRole.ISSUER
-        if b"APPLICANT_SELF_SIGNED" in content_bytes:
-            signer_id = "CN=Principal, O=Applicant Institution"
-            signer_role = SignerRole.APPLICANT
-
-        cert_hash = hashlib.sha256(content_bytes[:1024]).hexdigest()
-        return {
+        result: dict[str, Any] = {
             "validation_type": "PDF_DIGITAL_SIGNATURE",
-            "status": SignatureStatus.VALID,
-            "signer_identity": signer_id,
-            "signer_role": signer_role,
-            "signing_time": datetime.now(UTC).isoformat(),
-            "certificate_sha256": cert_hash,
-            "simulated": True,
-            "details": {
-                "subfilter": "adbe.pkcs7.detached" if has_subfilter else "adbe.pkcs7.sha1",
-                "integrity": "INTEGRITY_VERIFIED",
-            },
+            "status": SignatureStatus.UNKNOWN,
+            "signer_identity": None,
+            "signer_role": SignerRole.UNKNOWN,
+            "simulated": False,
+            "details": {},
         }
+        try:
+            from pyhanko.pdf_utils.reader import PdfFileReader
+            from pyhanko.sign.validation import validate_pdf_signature
+            from pyhanko_certvalidator import ValidationContext
+        except ImportError:
+            result["details"] = {
+                "reason": "Cryptographic validator unavailable; manual verification required"
+            }
+            return result
+        try:
+            reader = PdfFileReader(io.BytesIO(content_bytes))
+            signatures = reader.embedded_signatures
+            if not signatures:
+                result["details"] = {"reason": "No embedded PDF signatures"}
+                return result
+            checks = []
+            for signature in signatures:
+                check = validate_pdf_signature(
+                    signature,
+                    signer_validation_context=ValidationContext(
+                        trust_roots=[],
+                        allow_fetching=False,
+                        revocation_mode="hard-fail",
+                    ),
+                )
+                checks.append(
+                    {
+                        "intact": check.intact,
+                        "cryptographically_valid": check.valid,
+                        "trusted": check.trusted,
+                        "revoked": check.revoked,
+                    }
+                )
+            first = signatures[0]
+            result["signer_identity"] = first.signer_cert.subject.human_friendly
+            result["certificate_sha256"] = hashlib.sha256(first.signer_cert.dump()).hexdigest()
+            result["details"] = {
+                "signatures": checks,
+                "issuer_authorization": "UNKNOWN",
+                "revocation_policy": "OFFLINE_HARD_FAIL",
+                "reason": "No approved issuer trust bundle configured",
+            }
+            if any(c["revoked"] for c in checks):
+                result["status"] = SignatureStatus.REVOKED
+            elif any(not c["intact"] or not c["cryptographically_valid"] for c in checks):
+                result["status"] = SignatureStatus.INVALID
+            else:
+                result["status"] = SignatureStatus.CHAIN_INCOMPLETE
+        except Exception:
+            result["status"] = SignatureStatus.MALFORMED
+            result["details"] = {"reason": "PDF signature container could not be validated"}
+        return result
 
     def decode_and_verify_qr(self, qr_text_or_url: str) -> dict[str, Any]:
         """Decode structured QR and verify target destination against allowlist."""
@@ -117,7 +108,7 @@ class SignatureVerificationEngine:
                 data = json.loads(qr_text)
                 return {
                     "validation_type": "STRUCTURED_QR",
-                    "status": SignatureStatus.VALID,
+                    "status": SignatureStatus.UNKNOWN,
                     "qr_payload": data,
                     "qr_target_url": None,
                     "destination_safe": True,
@@ -137,12 +128,18 @@ class SignatureVerificationEngine:
 
         # URL validation against government domain allowlist
         hostname = (parsed.hostname or "").lower()
-        is_safe = any(
-            hostname == approved or hostname.endswith("." + approved)
-            for approved in APPROVED_DOMAINS
+        is_safe = (
+            parsed.scheme == "https"
+            and parsed.port in (None, 443)
+            and not parsed.username
+            and not parsed.password
+            and any(
+                hostname == approved or hostname.endswith("." + approved)
+                for approved in APPROVED_DOMAINS
+            )
         )
 
-        status = SignatureStatus.VALID if is_safe else SignatureStatus.INVALID
+        status = SignatureStatus.UNKNOWN if is_safe else SignatureStatus.INVALID
         return {
             "validation_type": "STRUCTURED_QR",
             "status": status,

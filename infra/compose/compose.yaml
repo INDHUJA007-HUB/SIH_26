@@ -168,6 +168,41 @@ services:
       migrate: {condition: service_completed_successfully}
       temporal: {condition: service_healthy}
 
+  lifecycle-worker:
+    image: sih-workbench:foundation
+    pull_policy: never
+    environment:
+      <<: *app-environment
+      WB_WORKER_DATABASE_URL: postgresql+psycopg://workbench_worker:${WORKER_DATABASE_PASSWORD}@postgres:5432/workbench
+    read_only: true
+    tmpfs: [/tmp:size=64M]
+    command: [python, -m, workbench.processing.lifecycle_worker]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      temporal: {condition: service_healthy}
+
+  media-worker:
+    image: sih-workbench:media
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      target: media
+    mem_limit: 768m
+    cpus: 1
+    pids_limit: 128
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pull_policy: never
+    environment:
+      <<: *app-environment
+      WB_WORKER_DATABASE_URL: postgresql+psycopg://workbench_worker:${WORKER_DATABASE_PASSWORD}@postgres:5432/workbench
+    read_only: true
+    tmpfs: [/tmp:size=256M]
+    command: [python, -m, workbench.processing.media_worker]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      temporal: {condition: service_healthy}
+
   outbox-relay:
     image: sih-workbench:foundation
     pull_policy: never

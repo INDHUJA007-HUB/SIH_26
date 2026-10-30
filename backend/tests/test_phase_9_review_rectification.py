@@ -17,7 +17,6 @@ from sqlalchemy import insert, select
 
 from workbench.adapters import tables as t
 from workbench.modules.rectification.contracts import (
-    FindingDiffClassification,
     WindowStatus,
 )
 from workbench.modules.reporting.contracts import ReportAudience
@@ -224,6 +223,25 @@ def test_separate_officer_and_applicant_reports_v1_immutable_and_simulated_label
             )
         )
 
+    with h.owner.begin() as conn:
+        observations = [
+            dict(o)
+            for o in conn.execute(
+                select(t.source_observations).where(
+                    t.source_observations.c.institution_id == inst_id
+                )
+            ).mappings()
+        ]
+        frozen = [
+            {k: v.isoformat() if hasattr(v, "isoformat") else v for k, v in o.items()}
+            for o in observations
+        ]
+        conn.execute(
+            t.evaluation_runs.update()
+            .where(t.evaluation_runs.c.id == run_id)
+            .values(manifest={"evidence_manifest": {"source_observations": frozen}})
+        )
+
     # 1. Generate Officer Report v1
     officer_payload = {
         "institution_id": inst_id,
@@ -232,7 +250,9 @@ def test_separate_officer_and_applicant_reports_v1_immutable_and_simulated_label
         "audience": ReportAudience.OFFICER.value,
         "version": 1,
     }
-    resp_off = h.call("POST", "/api/v1/reports/generate", json=officer_payload)
+    resp_off = h.call(
+        "POST", "/api/v1/reports/generate", actor="supervisor", mfa=True, json=officer_payload
+    )
     assert resp_off.status_code == 200
     off_data = resp_off.json()
     assert off_data["audience"] == ReportAudience.OFFICER.value
@@ -257,7 +277,9 @@ def test_separate_officer_and_applicant_reports_v1_immutable_and_simulated_label
         "audience": ReportAudience.APPLICANT.value,
         "version": 1,
     }
-    resp_app = h.call("POST", "/api/v1/reports/generate", json=applicant_payload)
+    resp_app = h.call(
+        "POST", "/api/v1/reports/generate", actor="supervisor", mfa=True, json=applicant_payload
+    )
     assert resp_app.status_code == 200
     app_data = resp_app.json()
     assert app_data["audience"] == ReportAudience.APPLICANT.value
@@ -270,7 +292,9 @@ def test_separate_officer_and_applicant_reports_v1_immutable_and_simulated_label
     assert app_data["content"]["source_observations"][0]["simulated_label"] == "SIMULATED"
 
     # 3. Report v1 is immutable: re-requesting returns exact identical report_hash and content
-    resp_off_repeat = h.call("POST", "/api/v1/reports/generate", json=officer_payload)
+    resp_off_repeat = h.call(
+        "POST", "/api/v1/reports/generate", actor="supervisor", mfa=True, json=officer_payload
+    )
     assert resp_off_repeat.status_code == 200
     assert resp_off_repeat.json()["report_hash"] == off_data["report_hash"]
     assert resp_off_repeat.json()["id"] == off_data["id"]
@@ -379,7 +403,6 @@ def test_response_window_scope_deadline_and_unrelated_change_rejected(h):
         "institution_id": inst_id,
         "application_id": app_id,
         "window_id": win_id,
-        "evidence_replacements": {"FIRE_CERTIFICATE": str(uuid4())},
         "field_updates": {"built_up_area_sqm": 2500},
     }
     resp_ok = h.call("POST", "/api/v1/rectification/responses", actor="a", json=compliant_payload)
@@ -398,233 +421,70 @@ def test_response_window_scope_deadline_and_unrelated_change_rejected(h):
 
 
 def test_reassessment_finding_diff_and_original_submission_reproducible(h):
-    """Subphase 9.4 & Phase 9 exit gate: Reassessment generates finding diff and preserves v1."""
-    inst_id = h.institutions["a"]
-    app = h.create(actor="a")
-    app_id = app["id"]
+    from workbench.activities.reassessment import reassess_response
+    from workbench.adapters.evaluation_service import EvaluationService
 
-    # 1. Baseline Run with 2 findings: Finding A (Fire Safety) and Finding B (Cadre Ratio)
-    baseline_run_id = str(uuid4())
-    finding_a_id = str(uuid4())
-    finding_b_id = str(uuid4())
-    now = datetime.now(UTC)
-
-    with h.owner.begin() as conn:
-        conn.execute(
-            insert(t.evaluation_runs).values(
-                id=baseline_run_id,
-                institution_id=inst_id,
-                application_id=app_id,
-                rule_release_id="REL-2026-v1",
-                manifest_hash="hash_baseline_v1",
-                evaluation_as_of="2026-04-01",
-                completeness_status="COMPLETE",
-                compliance_status="DEFICIENT",
-                source_verification_status="VERIFIED",
-                forensic_concern_status="CLEAR",
-                document_validity_status="VALID",
-                case_workflow_status="OPEN",
-                adverse_action_allowed=True,
-                created_at=now,
-            )
-        )
-        conn.execute(
-            insert(t.findings).values(
-                id=finding_a_id,
-                run_id=baseline_run_id,
-                institution_id=inst_id,
-                application_id=app_id,
-                semantic_key="AICTE.APH.2026.CH6.FIRE_SAFETY",
-                rule_id="RULE-FIRE-001",
-                dimension="INFRASTRUCTURE",
-                severity="CRITICAL",
-                status="OPEN",
-                title="Fire Safety Certificate validity expired",
-                description=(
-                    "Fire Safety Certificate validity expired before academic cycle commencement"
-                ),
-                officer_explanation="Municipal fire certificate expired on 2025-12-31",
-                applicant_explanation="Fire Safety Certificate validity expired",
-                adverse_action_allowed=True,
-                created_at=now,
-            )
-        )
-        conn.execute(
-            insert(t.findings).values(
-                id=finding_b_id,
-                run_id=baseline_run_id,
-                institution_id=inst_id,
-                application_id=app_id,
-                semantic_key="AICTE.APH.2026.CH7.CADRE_RATIO",
-                rule_id="RULE-CADRE-002",
-                dimension="FACULTY",
-                severity="MAJOR",
-                status="OPEN",
-                title="Cadre Ratio Violation",
-                description="Professor to Associate Professor ratio does not meet 1:2 norm",
-                officer_explanation="Current ratio is 1:4",
-                applicant_explanation=(
-                    "Professor to Associate Professor ratio does not meet 1:2 norm"
-                ),
-                adverse_action_allowed=True,
-                created_at=now,
-            )
-        )
-
-    # Generate baseline Officer Report v1
-    v1_off = h.call(
-        "POST",
-        "/api/v1/reports/generate",
-        json={
-            "institution_id": inst_id,
-            "application_id": app_id,
-            "evaluation_run_id": baseline_run_id,
-            "audience": ReportAudience.OFFICER.value,
-            "version": 1,
-        },
-    ).json()
-    v1_hash = v1_off["report_hash"]
-
-    # 2. Applicant submits rectification response
-    resp_id = str(uuid4())
-    win_id = str(uuid4())
-    with h.owner.begin() as conn:
-        conn.execute(
-            insert(t.response_windows).values(
-                id=win_id,
-                institution_id=inst_id,
-                application_id=app_id,
-                opened_by=h.actors["officer"],
-                authority_reference="ORDER_002",
-                allowed_slots=["FIRE_CERTIFICATE"],
-                allowed_fields=[],
-                deadline=datetime.now(UTC) + timedelta(days=7),
-                status=WindowStatus.SUBMITTED.value,
-                current_revision=1,
-            )
-        )
-        conn.execute(
-            insert(t.rectification_responses).values(
-                id=resp_id,
-                window_id=win_id,
-                institution_id=inst_id,
-                application_id=app_id,
-                submitted_by=h.actors["a"],
-                application_revision=2,
-                response_manifest={"evidence_replacements": {"FIRE_CERTIFICATE": str(uuid4())}},
-            )
-        )
-
-    # 3. Trigger reassessment: Fire safety finding is resolved, Cadre ratio remains unchanged
-    reassessment_run_id = str(uuid4())
-    reassessed_findings = [
-        {
-            "semantic_key": "AICTE.APH.2026.CH7.CADRE_RATIO",
-            "rule_id": "RULE-CADRE-002",
-            "clause": "APH Clause 7.3",
-            "severity": "MAJOR",
-            "finding_type": "DEFICIENCY",
-            "explanation": "Professor to Associate Professor ratio does not meet 1:2 norm",
-        }
-    ]
-
-    # Pre-populate reassessment evaluation_run in DB
-    with h.owner.begin() as conn:
-        conn.execute(
-            insert(t.evaluation_runs).values(
-                id=reassessment_run_id,
-                institution_id=inst_id,
-                application_id=app_id,
-                rule_release_id="REL-2026-v1",
-                manifest_hash="hash_reassessment_v2",
-                evaluation_as_of="2026-04-01",
-                completeness_status="COMPLETE",
-                compliance_status="DEFICIENT",
-                source_verification_status="VERIFIED",
-                forensic_concern_status="CLEAR",
-                document_validity_status="VALID",
-                case_workflow_status="OPEN",
-                adverse_action_allowed=True,
-                created_at=datetime.now(UTC),
-            )
-        )
-        conn.execute(
-            insert(t.findings).values(
-                id=str(uuid4()),
-                run_id=reassessment_run_id,
-                institution_id=inst_id,
-                application_id=app_id,
-                semantic_key="AICTE.APH.2026.CH7.CADRE_RATIO",
-                rule_id="RULE-CADRE-002",
-                dimension="FACULTY",
-                severity="MAJOR",
-                status="OPEN",
-                title="Cadre Ratio Violation",
-                description="Professor to Associate Professor ratio does not meet 1:2 norm",
-                officer_explanation="Current ratio is 1:4",
-                applicant_explanation=(
-                    "Professor to Associate Professor ratio does not meet 1:2 norm"
-                ),
-                adverse_action_allowed=True,
-                created_at=datetime.now(UTC),
-            )
-        )
-
-    reassess_payload = {
-        "institution_id": inst_id,
-        "application_id": app_id,
-        "response_id": resp_id,
-        "baseline_run_id": baseline_run_id,
-        "reassessed_findings": reassessed_findings,
-        "new_run_id": reassessment_run_id,
-    }
-    reassess_resp = h.call("POST", "/api/v1/rectification/reassess", json=reassess_payload)
-    assert reassess_resp.status_code == 200
-    diff_data = reassess_resp.json()
-
-    # Assert diff summary: 1 resolved, 1 unchanged
-    assert diff_data["diff_summary"]["resolved"] == 1
-    assert diff_data["diff_summary"]["unchanged"] == 1
-    assert diff_data["diff_summary"]["new"] == 0
-
-    diff_items = {d["finding_key"]: d for d in diff_data["finding_diffs"]}
-    assert (
-        diff_items["AICTE.APH.2026.CH6.FIRE_SAFETY"]["classification"]
-        == FindingDiffClassification.RESOLVED.value
+    app = h.create(
+        declared_facts={"intake": 420, "bandwidth_mbps": 100},
+        slots=[{"code": "FIRE_CERTIFICATE", "required": False}],
     )
-    assert (
-        diff_items["AICTE.APH.2026.CH7.CADRE_RATIO"]["classification"]
-        == FindingDiffClassification.UNCHANGED.value
+    institution = h.institutions["a"]
+    baseline = EvaluationService(h.owner).run_evaluation(institution, app["id"])
+    original_hash = baseline["manifest_hash"]
+    window = h.call(
+        "POST",
+        "/api/v1/rectification/windows",
+        actor="supervisor",
+        mfa=True,
+        json={
+            "institution_id": institution,
+            "application_id": app["id"],
+            "authority_reference": "DEMO_POLICY",
+            "allowed_fields": ["bandwidth_mbps"],
+            "deadline": (datetime.now(UTC) + timedelta(days=1)).isoformat(),
+        },
     )
-
-    # 4. Generate report v2 for reassessment run
-    v2_off = h.call(
+    assert window.status_code == 200, window.text
+    response = h.call(
         "POST",
-        "/api/v1/reports/generate",
+        "/api/v1/rectification/responses",
         json={
-            "institution_id": inst_id,
-            "application_id": app_id,
-            "evaluation_run_id": reassessment_run_id,
-            "audience": ReportAudience.OFFICER.value,
-            "version": 2,
+            "institution_id": institution,
+            "application_id": app["id"],
+            "window_id": window.json()["id"],
+            "field_updates": {"bandwidth_mbps": 350},
         },
-    ).json()
-    assert v2_off["version"] == 2
-    assert v2_off["report_hash"] != v1_hash
-
-    # Invariant: Original submission and report v1 remain reproducible and unchanged!
-    v1_refetch = h.call(
-        "POST",
-        "/api/v1/reports/generate",
-        json={
-            "institution_id": inst_id,
-            "application_id": app_id,
-            "evaluation_run_id": baseline_run_id,
-            "audience": ReportAudience.OFFICER.value,
-            "version": 1,
-        },
-    ).json()
-    assert v1_refetch["report_hash"] == v1_hash
+    )
+    assert response.status_code == 200, response.text
+    with h.owner.connect() as conn:
+        event_id = conn.scalar(
+            select(t.outbox.c.id).where(
+                t.outbox.c.application_id == app["id"],
+                t.outbox.c.event_type == "RectificationSubmitted",
+            )
+        )
+    processed = reassess_response(event_id)
+    repeated = reassess_response(event_id)
+    assert repeated["run_id"] == processed["run_id"]
+    with h.owner.connect() as conn:
+        original = (
+            conn.execute(
+                select(t.evaluation_runs).where(t.evaluation_runs.c.id == baseline["run_id"])
+            )
+            .mappings()
+            .one()
+        )
+        diff = (
+            conn.execute(
+                select(t.reassessment_diffs).where(
+                    t.reassessment_diffs.c.id == processed["diff_id"]
+                )
+            )
+            .mappings()
+            .one()
+        )
+        assert original["manifest_hash"] == original_hash
+        assert diff["diff_summary"]["resolved"] >= 1
 
 
 def test_unassigned_officer_cannot_read_another_institution_phase_9_rows(h):

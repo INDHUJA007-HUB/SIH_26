@@ -642,7 +642,7 @@ def test_retention_purge_workflow_refuses_original_evidence_under_hold_or_evalua
     assert orig_exec_data["purged_count"] == 0, "Zero original evidence items purged"
 
     # 5. Execute purge on DERIVATIVES_CACHES -> Expired derivative is purged
-    with patch.object(ObjectStorage, "delete", wraps=h.storage.delete) as mock_storage_delete:
+    with patch.object(ObjectStorage, "delete", return_value=None) as mock_storage_delete:
         purge_deriv_exec = h.call(
             "POST",
             "/api/v1/retention/purge-runs",
@@ -928,15 +928,11 @@ def test_champion_challenger_drift_evaluation():
 
     assert result.candidate_version == "candidate_ocr_v2.1.0"
     assert result.champion_version == "aicte_ocr_extractor_v1.0.0"
-    assert result.benchmark_packet_count > 0
-    assert result.evaluated_field_count > 0
-    assert result.champion_precision >= 0.85
-    assert result.challenger_precision >= 0.80
+    assert result.measurement_status == "UNMEASURED"
+    assert result.benchmark_packet_count == 0
+    assert result.evaluated_field_count == 0
+    assert result.field_metrics == []
     assert result.immutable_historical_data_preserved is True
-    assert len(result.field_metrics) >= 5
-
-    for fm in result.field_metrics:
-        assert 0.0 <= fm.agreement_rate <= 1.0
 
 
 def test_drift_analysis_api_endpoint(h):

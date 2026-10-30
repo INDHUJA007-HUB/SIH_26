@@ -5,7 +5,7 @@ from __future__ import annotations
 import contextlib
 from datetime import timedelta
 
-from sqlalchemy import delete, insert, select, update
+from sqlalchemy import Connection, delete, insert, select, text, update
 
 from workbench.adapters import tables as t
 from workbench.adapters.domain_store import DomainStore, now, row, uid
@@ -37,6 +37,11 @@ class RetentionService:
     def __init__(self, store: DomainStore, storage: ObjectStorage | None = None) -> None:
         self.store = store
         self.storage = storage
+
+    @staticmethod
+    def _lock_retention(conn: Connection) -> None:
+        # Hold placement/release and purge share a lock, including the no-holds-yet case.
+        conn.execute(text("SELECT pg_advisory_xact_lock(78521315)"))
 
     def create_policy(
         self, principal: Principal, payload: RetentionPolicyCreate, request_id: str
@@ -99,6 +104,7 @@ class RetentionService:
         require_step_up(principal)
 
         with self.store.transaction(principal) as conn:
+            self._lock_retention(conn)
             actor = self.store.actor(conn)
             if not any(m["role"] == "supervisor" for m in actor["memberships"]):
                 raise AccessDenied()
@@ -141,6 +147,7 @@ class RetentionService:
         require_step_up(principal)
 
         with self.store.transaction(principal) as conn:
+            self._lock_retention(conn)
             actor = self.store.actor(conn)
             if not any(m["role"] == "supervisor" for m in actor["memberships"]):
                 raise AccessDenied()
@@ -196,10 +203,18 @@ class RetentionService:
             return [LegalHoldResponse(**row(r)) for r in rows]
 
     def evaluate_purge_eligibility(
-        self, principal: Principal, policy_id: str, max_items: int = 100
+        self,
+        principal: Principal,
+        policy_id: str,
+        max_items: int = 100,
+        connection: Connection | None = None,
     ) -> PurgeEligibilityResult:
         """Scan candidate items and partition into eligible, held, and active-dependency groups."""
-        with self.store.transaction(principal) as conn:
+        with (
+            contextlib.nullcontext(connection)
+            if connection is not None
+            else self.store.transaction(principal)
+        ) as conn:
             policy_row = row(
                 conn.execute(
                     select(t.retention_policies).where(t.retention_policies.c.id == policy_id)
@@ -207,6 +222,8 @@ class RetentionService:
             )
             if not policy_row:
                 raise NotFoundError(f"Retention policy '{policy_id}' not found")
+            if not policy_row["is_active"]:
+                raise ApplicationError("INACTIVE_POLICY", "Retention policy is inactive", 409)
 
             data_class = DataClass(policy_row["data_class"])
             cutoff = now() - timedelta(days=policy_row["retention_period_days"])
@@ -232,6 +249,18 @@ class RetentionService:
                 select(t.run_inputs.c.input_id).where(t.run_inputs.c.input_type == "EVIDENCE")
             ).fetchall()
             manifest_evidence_ids = {r[0] for r in run_input_rows}
+            for manifest in conn.execute(select(t.revisions.c.manifest)).scalars():
+                manifest_evidence_ids.update(e["id"] for e in manifest.get("evidence", []))
+
+            # Foreign-key dependents must be retained before any irreversible object delete.
+            for table in t.metadata.tables.values():
+                if table is t.derivatives:
+                    continue
+                for fk in table.foreign_keys:
+                    if fk.column.table is t.evidence and fk.column.name == "id":
+                        manifest_evidence_ids.update(
+                            value for value in conn.execute(select(fk.parent)).scalars() if value
+                        )
 
             candidates: list[PurgeCandidate] = []
 
@@ -328,12 +357,16 @@ class RetentionService:
     ) -> PurgeManifestResponse:
         """Execute or dry-run an approved purge."""
         require_step_up(principal)
-        eligibility = self.evaluate_purge_eligibility(principal, policy_id, max_items)
-
         with self.store.transaction(principal) as conn:
+            self._lock_retention(conn)
             actor = self.store.actor(conn)
             if not any(m["role"] == "supervisor" for m in actor["memberships"]):
                 raise AccessDenied()
+            eligibility = self.evaluate_purge_eligibility(principal, policy_id, max_items, conn)
+            if not dry_run and eligibility.eligible_count and self.storage is None:
+                raise ApplicationError(
+                    "STORAGE_REQUIRED", "Purge requires versioned object storage", 503
+                )
 
             manifest_id = uid()
             now_ts = now()
@@ -358,11 +391,10 @@ class RetentionService:
                                 event_app_id = d_row.get("application_id")
                             storage_key = d_row.get("object_key")
                             if storage_key:
+                                assert self.storage is not None
+                                self.storage.delete(storage_key, version=d_row["object_version"])
                                 purged_deriv_keys.append(storage_key)
-                                if self.storage:
-                                    with contextlib.suppress(Exception):
-                                        self.storage.delete(storage_key)
-                            bytes_freed += d_row.get("size_bytes") or 1024
+                            bytes_freed += d_row["size_bytes"]
                             conn.execute(
                                 delete(t.derivatives).where(t.derivatives.c.id == deriv_id)
                             )
@@ -376,7 +408,25 @@ class RetentionService:
                                 event_inst_id = ev_row.get("institution_id")
                                 event_app_id = ev_row.get("application_id")
                             purged_ev_ids.append(ev_id)
-                            bytes_freed += ev_row.get("size_bytes") or 10240
+                            assert self.storage is not None
+                            if ev_row.get("clean_key"):
+                                self.storage.delete(
+                                    ev_row["clean_key"], version=ev_row["clean_version"]
+                                )
+                            self.storage.delete(
+                                ev_row["quarantine_key"],
+                                bucket=self.storage.quarantine,
+                                version=ev_row["quarantine_version"],
+                            )
+                            bytes_freed += ev_row["size_bytes"]
+                            for child in conn.execute(
+                                select(t.derivatives).where(t.derivatives.c.evidence_id == ev_id)
+                            ).mappings():
+                                self.storage.delete(
+                                    child["object_key"], version=child["object_version"]
+                                )
+                                purged_deriv_keys.append(child["object_key"])
+                                bytes_freed += child["size_bytes"]
                             # Delete derivative children first
                             conn.execute(
                                 delete(t.derivatives).where(t.derivatives.c.evidence_id == ev_id)
@@ -384,7 +434,7 @@ class RetentionService:
                             conn.execute(delete(t.evidence).where(t.evidence.c.id == ev_id))
             else:
                 # Dry run
-                bytes_freed = eligibility.estimated_bytes_freed
+                bytes_freed = 0
 
             sha256_digest = compute_manifest_digest(
                 policy_id=policy_id,

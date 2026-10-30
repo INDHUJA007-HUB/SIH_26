@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import email.message
-import smtplib
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -270,6 +268,15 @@ class TasksAlertsService:
             "created_at": created_at,
         }
         self.conn.execute(t.durable_timers.insert().values(**values))
+        self.conn.execute(
+            t.outbox.insert().values(
+                id=str(uuid4()),
+                institution_id=req.institution_id,
+                application_id=req.application_id,
+                event_type="DurableTimerScheduled",
+                payload={"timer_id": timer_id},
+            )
+        )
         return self._to_timer_record(values)
 
     def cancel_obsolete_timers(
@@ -331,22 +338,10 @@ class TasksAlertsService:
             provider_ref = f"in_app_{uuid4().hex[:12]}"
             sent_at = datetime.now(UTC)
         elif req.channel == NotificationChannel.EMAIL:
-            # Deliver to local Mailpit instance on 127.0.0.1:1025
-            msg = email.message.EmailMessage()
-            msg["Subject"] = req.subject or "Workbench Notification"
-            msg["From"] = "workbench@aicte.local"
-            msg["To"] = req.recipient
-            msg.set_content(req.body)
-
-            try:
-                with smtplib.SMTP("127.0.0.1", 1025, timeout=5) as server:
-                    server.send_message(msg)
-                status = NotificationStatus.SENT
-                provider_ref = f"mailpit_{uuid4().hex[:12]}"
-                sent_at = datetime.now(UTC)
-            except Exception as exc:
-                status = NotificationStatus.FAILED
-                retries.append({"error": str(exc), "timestamp": str(datetime.now(UTC))})
+            if not req.application_id:
+                raise ApplicationError(
+                    "APPLICATION_REQUIRED", "Email delivery requires an application scope", 422
+                )
 
         values = {
             "id": notification_id,
@@ -366,6 +361,16 @@ class TasksAlertsService:
             "sent_at": sent_at,
         }
         self.conn.execute(t.notifications.insert().values(**values))
+        if req.channel == NotificationChannel.EMAIL:
+            self.conn.execute(
+                t.outbox.insert().values(
+                    id=str(uuid4()),
+                    institution_id=req.institution_id,
+                    application_id=req.application_id,
+                    event_type="NotificationQueued",
+                    payload={"notification_id": notification_id},
+                )
+            )
         return self._to_notification_record(values)
 
     def acknowledge_notification(self, notification_id: str) -> NotificationRecord:

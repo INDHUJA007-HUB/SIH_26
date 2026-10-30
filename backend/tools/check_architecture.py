@@ -1,4 +1,4 @@
-"""Fail on domain/framework coupling and cross-module implementation imports."""
+"""Keep domain code pure; cross-module calls use explicit public package exports."""
 
 import ast
 from pathlib import Path
@@ -24,7 +24,11 @@ for source in ROOT.rglob("*.py"):
                 "temporalio",
             }:
                 violations.append(f"{source.name}:{node.lineno}: framework import {imported}")
-            if imported.startswith("workbench.modules.") and imported.split(".")[2] != own_module:
+            if (
+                imported.startswith("workbench.modules.")
+                and imported.split(".")[2] != own_module
+                and len(imported.split(".")) > 3
+            ):
                 violations.append(f"{source.name}:{node.lineno}: cross-module import {imported}")
             if imported.startswith("workbench.adapters"):
                 violations.append(f"{source.name}:{node.lineno}: infrastructure import {imported}")

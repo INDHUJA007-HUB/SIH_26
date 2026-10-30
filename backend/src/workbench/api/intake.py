@@ -776,6 +776,7 @@ def register_intake_api(app: FastAPI, settings: Settings) -> DomainStore:
             return evaluation_service.get_finding_evidence(id, conn=connection)
 
     from workbench.api.media_spatial import create_phase_11_router
+    from workbench.api.niyamflow import create_niyam_router
     from workbench.api.operations import create_operations_router
     from workbench.api.retention import create_retention_router
     from workbench.api.review_rectification import create_phase_9_router
@@ -784,9 +785,11 @@ def register_intake_api(app: FastAPI, settings: Settings) -> DomainStore:
 
     app.include_router(create_operations_router(store, principal))
     app.include_router(create_retention_router(store, principal, storage=storage))
+    # Specific report paths must precede the legacy /reports/{report_id} route.
+    app.include_router(create_niyam_router(store, principal))
     app.include_router(create_phase_9_router(store, principal))
     app.include_router(create_phase_10_router(store, principal))
-    app.include_router(create_phase_11_router(store, principal))
+    app.include_router(create_phase_11_router(store, principal, storage))
     app.include_router(create_phase_12_router(store, principal))
     app.include_router(create_verification_router(store, principal))
     app.include_router(router)

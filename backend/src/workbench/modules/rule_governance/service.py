@@ -166,8 +166,10 @@ class RuleGovernanceService:
             }
 
             for rule_id, cand_rule in candidate_rule_map.items():
-                baseline_outcome = baseline_outcomes.get(rule_id, "PASS")
-                params = cand_rule.get("proposed_parameters", {})
+                baseline_outcome = baseline_outcomes.get(rule_id, "NOT_EVALUABLE")
+                params = dict(cand_rule.get("proposed_parameters", {}))
+                if cand_rule.get("dsl_expression"):
+                    params["dsl_expression"] = cand_rule["dsl_expression"]
 
                 # Evaluate rule using proposed parameters against frozen facts
                 simulated_outcome = RuleGovernanceService._evaluate_single_rule(
@@ -210,32 +212,45 @@ class RuleGovernanceService:
     @staticmethod
     def _evaluate_single_rule(rule_id: str, params: dict[str, Any], facts: dict[str, Any]) -> str:
         """Deterministic evaluation of a candidate rule against facts."""
-        if rule_id == "APH-LAND-001":
-            req_slot = params.get("required_slot", "LAND_USE_CERTIFICATE")
-            certs = facts.get("certificates", [])
-            has_cert = any(c.get("slot") == req_slot for c in certs)
-            return "PASS" if has_cert else "DEFICIENT"
+        from workbench.modules.evaluation import RuleEvaluatorDSL
 
-        if rule_id == "APH-INFRA-BW-001":
-            min_bw = params.get("min_bandwidth_mbps", 300)
-            actual_bw = facts.get("bandwidth_mbps", 0)
-            return "PASS" if actual_bw >= min_bw else "DEFICIENT"
-
-        if rule_id == "APH-INFRA-PRINT-001":
-            ratio = params.get("printer_ratio", 0.05)
-            pc_count = facts.get("pc_count", 0)
-            required_printers = math.ceil(pc_count * ratio)
-            actual_printers = facts.get("printer_count", 0)
-            return "PASS" if actual_printers >= required_printers else "DEFICIENT"
-
-        if rule_id == "APH-INTL-PG-001":
-            capacity_pct = params.get("capacity_percentage", 15)
-            intake = facts.get("approved_intake", 60)
-            requested = facts.get("requested_seats", 12)
-            capacity = int(intake * (capacity_pct / 100.0))
-            return "PASS" if requested <= capacity else "DEFICIENT"
-
-        return "PASS"
+        expression = params.get("dsl_expression")
+        if not expression:
+            # Demonstration aliases retain explicit parameters but share the production DSL.
+            if rule_id == "APH-LAND-001":
+                expression = {
+                    "operation": "evidence_presence",
+                    "field": "certificates",
+                    "required_slot": params.get("required_slot", "LAND_USE_CERTIFICATE"),
+                }
+            elif rule_id == "APH-INFRA-BW-001":
+                expression = {
+                    "operation": "threshold_lookup",
+                    "input_field": "approved_intake",
+                    "target_field": "bandwidth_mbps",
+                    "tiers": [
+                        {"min": 1, "max": 300, "required": params.get("min_bandwidth_mbps", 100)},
+                        {"min": 301, "max": 600, "required": params.get("min_bandwidth_mbps", 300)},
+                    ],
+                }
+            elif rule_id == "APH-INFRA-PRINT-001":
+                expression = {
+                    "operation": "ratio_check",
+                    "numerator_field": "printer_count",
+                    "denominator_field": "pc_count",
+                    "min_ratio": str(params.get("printer_ratio", "0.05")),
+                }
+            else:
+                expression = {
+                    "operation": "abstain",
+                    "reason": "No approved executable rule expression supplied",
+                }
+        outcome, _ = RuleEvaluatorDSL().evaluate_rule(
+            rule_id, expression, facts, {}, "2026-10-29", params
+        )
+        return {"PASS": "PASS", "POTENTIAL_DEFICIENCY": "DEFICIENT"}.get(
+            outcome.outcome.value, "NOT_EVALUABLE"
+        )
 
     @staticmethod
     def create_published_release_manifest(
@@ -329,7 +344,7 @@ class RuleGovernanceService:
             remedy_type = RemedyType.BANDWIDTH_TIER
             approved_intake = facts.get("approved_intake", 420)
             current_bw = facts.get("bandwidth_mbps", 100)
-            required_bw = 300 if approved_intake >= 300 else 100
+            required_bw = 300 if approved_intake > 300 else 100
             shortfall = max(0, required_bw - current_bw)
             calculation_trace = {
                 "approved_intake": approved_intake,
@@ -371,28 +386,20 @@ class RuleGovernanceService:
             reason = None
 
         elif rule_id == "APH-INTAKE-REDUCE-001":
-            remedy_type = RemedyType.INTAKE_REDUCTION_AUTHORIZED
-            original_intake = facts.get("approved_intake", 420)
-            proposed_intake = 300
-            calculation_trace = {
-                "original_approved_intake": original_intake,
-                "proposed_intake": proposed_intake,
-                "stage": "RECTIFICATION_WINDOW",
-                "is_authorized_application_change": True,
-                "rewrites_historical_admissions": False,
-                "arithmetic": (
-                    f"Authorized intake reduction from {original_intake} to {proposed_intake} "
-                    "adjusts institutional land/faculty requirements."
-                ),
-            }
-            remedy_facts["approved_intake"] = proposed_intake
-            findings_closed = ["finding_intake_deficiency_001"]
-            findings_remaining = []
-            allowed = is_open_window
-            reason = None if is_open_window else "Intake reduction not permitted past deadline"
+            raise ValueError(
+                "Intake optimization requires an independently approved "
+                "interpretation and process policy"
+            )
 
         else:
             raise ValueError(f"Unsupported rule for remedy calculation: {rule_id}")
+
+        result = RuleGovernanceService._evaluate_single_rule(rule_id, {}, remedy_facts)
+        findings_closed = [finding_id] if result == "PASS" else []
+        findings_remaining = [] if result == "PASS" else [finding_id]
+        allowed = allowed and is_open_window
+        if not is_open_window:
+            reason = "No authorized response window is open"
 
         advisory_wording = (
             "This remedy calculation is advisory and exploratory only. "
@@ -413,7 +420,7 @@ class RuleGovernanceService:
             calculation_trace=calculation_trace,
             proposed_remedy_facts=remedy_facts,
             re_evaluation_result={
-                "compliance_status": "PASS",
+                "compliance_status": result,
                 "closed_count": len(findings_closed),
                 "remaining_count": len(findings_remaining),
             },
@@ -477,6 +484,8 @@ class RuleGovernanceService:
         source_observations: list[dict[str, Any]],
         rule_hashes: dict[str, str],
         evaluator_version: str = "1.0.0-phase12",
+        evaluation_snapshot: dict[str, Any] | None = None,
+        expected_outcomes: list[dict[str, Any]] | None = None,
     ) -> ReplayBundle:
         """Create an offline reproducibility export bundle containing frozen inputs."""
         bundle_id = str(uuid.uuid4())
@@ -486,6 +495,12 @@ class RuleGovernanceService:
             "source_observations.json": json.dumps(source_observations, sort_keys=True, indent=2),
             "rule_hashes.json": json.dumps(rule_hashes, sort_keys=True, indent=2),
         }
+
+        if evaluation_snapshot is not None:
+            files["evaluation.json"] = json.dumps(
+                {"snapshot": evaluation_snapshot, "expected_outcomes": expected_outcomes},
+                sort_keys=True,
+            )
 
         file_hashes = {}
         for fname, content in files.items():
@@ -532,8 +547,22 @@ class RuleGovernanceService:
                 f"but computed {computed_bundle_hash}",
             )
 
-        expected_file_hashes = bundle_data.get("file_hashes", {})
+        expected_file_hashes = manifest.get("file_hashes", {})
         files = bundle_data.get("files", {})
+        required = {
+            "facts.json",
+            "evidence_manifest.json",
+            "source_observations.json",
+            "rule_hashes.json",
+        }
+        if not isinstance(expected_file_hashes, dict) or not required.issubset(
+            expected_file_hashes
+        ):
+            return False, "INVALID_MANIFEST: required replay files are missing"
+        if bundle_data.get("file_hashes") != expected_file_hashes:
+            return False, "HASH_MISMATCH: file hashes differ from manifest"
+        if not isinstance(files, dict) or set(files) != set(expected_file_hashes):
+            return False, "MISSING_FILE: replay file set differs from manifest"
 
         for fname, expected_hash in expected_file_hashes.items():
             if fname not in files:
@@ -542,6 +571,8 @@ class RuleGovernanceService:
                     f"MISSING_FILE: file '{fname}' listed in manifest but missing in bundle",
                 )
             content = files[fname]
+            if not isinstance(content, str):
+                return False, f"INVALID_FILE: {fname} must contain UTF-8 text"
             actual_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
             if actual_hash != expected_hash:
                 return (
@@ -550,4 +581,44 @@ class RuleGovernanceService:
                     f"but computed {actual_hash}",
                 )
 
+        if "evaluation.json" in files:
+            from workbench.modules.evaluation import DeterministicEvaluator
+            from workbench.modules.rule_registry import RuleVersionRecord
+
+            try:
+                payload = json.loads(files["evaluation.json"])
+                snapshot = payload["snapshot"]
+                result = DeterministicEvaluator().evaluate(
+                    institution_id=snapshot["institution_id"],
+                    application_id=snapshot["application_id"],
+                    application_revision_id=snapshot["application_revision_id"],
+                    fact_set_id=snapshot["fact_set_id"],
+                    fact_set_hash=snapshot["fact_set_sha256"],
+                    facts=snapshot["facts"],
+                    claims=snapshot["claims"],
+                    rule_release_id=snapshot["rule_release_id"],
+                    rule_release_hash=snapshot["rule_release_sha256"],
+                    rules=[RuleVersionRecord.model_validate(r) for r in snapshot["rules"]],
+                    evaluation_as_of=snapshot["evaluation_as_of"],
+                    execution_mode=snapshot["execution_mode"],
+                    evidence_manifest=snapshot["evidence_manifest"],
+                )
+                output_keys = (
+                    "rule_id",
+                    "outcome",
+                    "rationale",
+                    "observed_value",
+                    "expected_value",
+                    "calculation_trace",
+                )
+                actual = [
+                    {k: o.model_dump(mode="json")[k] for k in output_keys} for o in result.outcomes
+                ]
+                expected = payload["expected_outcomes"]
+                if sorted(actual, key=lambda o: o["rule_id"]) != sorted(
+                    expected, key=lambda o: o["rule_id"]
+                ):
+                    return False, "REPLAY_MISMATCH: frozen evaluation outcomes differ"
+            except (KeyError, TypeError, ValueError):
+                return False, "INVALID_EVALUATION: incomplete frozen inputs"
         return True, None

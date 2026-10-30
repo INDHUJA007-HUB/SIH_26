@@ -11,9 +11,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import Connection, text
 
 from workbench.adapters.domain_store import DomainStore
+from workbench.adapters.institutional_records_application_service import HistoricalRecordService
+from workbench.adapters.verification_application_service import VerificationService
 from workbench.contracts.intake import Principal
-from workbench.modules.institutional_records.service import HistoricalRecordService
-from workbench.modules.verification.service import VerificationService
 from workbench.modules.verification.simulator import SimulatorRegistry
 from workbench.platform.errors import ApplicationError
 

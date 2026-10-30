@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -79,7 +79,7 @@ class OperationalHealthSummary(BaseModel):
     extraction_health: ExtractionFailureRate = Field(default_factory=ExtractionFailureRate)
     source_health: SourceCoverageHealth = Field(default_factory=SourceCoverageHealth)
     audit_health: AuditCheckpointLag = Field(default_factory=AuditCheckpointLag)
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # --- Incident Containment ---
@@ -143,7 +143,7 @@ class ReconciliationSummary(BaseModel):
     scanned_count: int
     reconciled_count: int
     items: list[ReconciliationItem] = Field(default_factory=list)
-    executed_at: datetime = Field(default_factory=datetime.utcnow)
+    executed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # --- Drift Analysis (Phase 15.2) ---
@@ -160,6 +160,7 @@ class FieldDriftMetric(BaseModel):
 
 
 class DriftEvaluationResult(BaseModel):
+    measurement_status: str = "MEASURED"
     candidate_version: str
     champion_version: str
     benchmark_packet_count: int
@@ -173,7 +174,7 @@ class DriftEvaluationResult(BaseModel):
     field_metrics: list[FieldDriftMetric] = Field(default_factory=list)
     summary: str
     immutable_historical_data_preserved: bool = True
-    evaluated_at: datetime = Field(default_factory=datetime.utcnow)
+    evaluated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # --- Access Assurance (Phase 15.4) ---
@@ -184,7 +185,7 @@ class AccessSweepResult(BaseModel):
     expired_memberships_revoked: int = 0
     scanned_case_assignments: int = 0
     expired_assignments_revoked: int = 0
-    swept_at: datetime = Field(default_factory=datetime.utcnow)
+    swept_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class AccessReviewSummary(BaseModel):

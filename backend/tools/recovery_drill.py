@@ -212,13 +212,19 @@ def run_recovery_drill() -> dict[str, object]:
 
     duration = time.perf_counter() - start_time
     print("=" * 70)
-    print(f"RECOVERY DRILL COMPLETE: 4/4 CHECKPOINTS PASSED IN {duration:.2f}s")
+    print(
+        f"RECONCILIATION CHECKS COMPLETE: 4/4 CHECKPOINTS PASSED; RESTORE NOT TESTED IN {duration:.2f}s"
+    )
     print("=" * 70)
 
     return {
         "drill_timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "duration_seconds": round(duration, 3),
         "total_checkpoints": len(checkpoints),
+        "qualification_status": "RECONCILIATION_ONLY",
+        "database_object_workflow_restore": "NOT_EXECUTED",
+        "achieved_rpo_seconds": None,
+        "achieved_rto_seconds": None,
         "passed_checkpoints": sum(1 for c in checkpoints if c["status"] == "PASSED"),
         "checkpoints": checkpoints,
     }

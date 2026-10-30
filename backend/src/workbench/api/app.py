@@ -1,4 +1,4 @@
-"""Development API through secure Phase 4 intake; no regulatory decision endpoints."""
+"""Development evidence intake and policy-bound NiyamFlow approval prototype."""
 
 import logging
 import re
@@ -69,12 +69,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         provider.shutdown()
 
     app = FastAPI(
-        title="AICTE Evidence Workbench — Secure Intake"
+        title="NiyamFlow — Approval and Evidence Workbench"
         if config.domain_enabled
         else "AICTE Evidence Workbench — Foundation",
         version=__version__,
         lifespan=lifespan,
-        description="Development evidence intake. No live verification or compliance decisions.",
+        description="Development approval workflows and evidence review. Published policies and "
+        "authorized human decisions are required; this release is not production qualified.",
     )
     app.state.settings = config
     app.add_middleware(CommandBodyLimit)
@@ -84,6 +85,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         from workbench.api.intake import register_intake_api
 
         domain_store = register_intake_api(app, config)
+
+        from pathlib import Path
+
+        from fastapi.responses import HTMLResponse
+
+        @app.get("/niyam", response_class=HTMLResponse, include_in_schema=False)
+        def niyam_workspace() -> str:
+            return (Path(__file__).parents[1] / "web/niyamflow.html").read_text(encoding="utf-8")
 
     @app.middleware("http")
     async def request_context(request: Request, call_next: RequestResponseEndpoint) -> Response:
@@ -282,7 +291,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "source_verification_providers": providers,
             "regulatory_rule_publication": False,
             "official_decisions": False,
-            "equipment_detection_mode": "HEURISTIC_SIMULATED",
+            "equipment_detection_mode": "EXPRESS_MANUAL_FALLBACK",
             "ocr_engine": "SIMULATED_FALLBACK",
             "ocr_mode": "SIMULATED",
             "fixture_endpoint": True,

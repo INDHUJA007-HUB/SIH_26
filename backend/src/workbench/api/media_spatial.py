@@ -6,22 +6,23 @@ from __future__ import annotations
 
 import base64
 from typing import Any
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import Connection, select, text
 
 from workbench.adapters import tables as t
 from workbench.adapters.domain_store import DomainStore
+from workbench.adapters.media_analysis_application_service import MediaAnalysisService
+from workbench.adapters.object_storage import ObjectStorage
 from workbench.contracts.intake import Principal
 from workbench.modules.media_analysis import (
     EquipmentCategory,
     EquipmentDetectionRecord,
     FloorPlanReconciliationRecord,
-    MediaAnalysisService,
     ModelMode,
     SimilarityMatch,
-    generate_contact_sheet,
 )
 from workbench.platform.errors import ApplicationError, NotFoundError
 
@@ -69,13 +70,13 @@ class DetectEquipmentBody(BaseModel):
     room_identifier: str
     declared_quantity: int
     equipment_category: str = EquipmentCategory.WORKSTATION.value
-    model_mode: str = ModelMode.HEURISTIC_SIMULATED.value
+    model_mode: str = ModelMode.EXPRESS_MANUAL_FALLBACK.value
     image_bytes_base64: str | None = None
 
 
 class CorrectEquipmentCountBody(BaseModel):
-    corrected_count: int
-    reason: str
+    corrected_count: int = Field(ge=0)
+    reason: str = Field(min_length=10)
 
 
 class FloorPlanReconciliationBody(BaseModel):
@@ -85,7 +86,9 @@ class FloorPlanReconciliationBody(BaseModel):
     identified_spaces: list[dict[str, Any]]
 
 
-def create_phase_11_router(store: DomainStore, principal: Any) -> APIRouter:
+def create_phase_11_router(
+    store: DomainStore, principal: Any, storage: ObjectStorage | None = None
+) -> APIRouter:
     router = APIRouter(prefix="/api/v1", tags=["phase_11_media_spatial"])
 
     # 1. Media Metadata Inspection & Frame Sampling
@@ -104,27 +107,28 @@ def create_phase_11_router(store: DomainStore, principal: Any) -> APIRouter:
             institution_id = ev_row[0]
             _check_institution_access(conn, institution_id, write=True)
 
-            img_bytes: bytes | None = None
-            if body.image_bytes_base64:
-                try:
-                    img_bytes = base64.b64decode(body.image_bytes_base64)
-                except Exception:
-                    img_bytes = None
-
-            service = MediaAnalysisService(conn)
-            return service.inspect_and_store_media(
-                institution_id=institution_id,
-                evidence_id=evidence_id,
-                evidence_version_id=body.evidence_version_id,
-                media_type=body.media_type,
-                video_role=body.video_role,
-                duration_seconds=body.duration_seconds,
-                dimensions=body.dimensions,
-                codec=body.codec,
-                frame_rate=body.frame_rate,
-                bitrate_kbps=body.bitrate_kbps,
-                image_bytes=img_bytes,
+            if body.evidence_version_id != evidence_id:
+                raise ApplicationError(
+                    "VERSION_MISMATCH", "Analyze the admitted evidence version", 422
+                )
+            ev = (
+                conn.execute(select(t.evidence).where(t.evidence.c.id == evidence_id))
+                .mappings()
+                .one()
             )
+            if ev["status"] != "ACCEPTED":
+                raise ApplicationError("EVIDENCE_NOT_ACCEPTED", "Admitted evidence required", 409)
+            event_id = str(uuid4())
+            conn.execute(
+                t.outbox.insert().values(
+                    id=event_id,
+                    institution_id=institution_id,
+                    application_id=ev["application_id"],
+                    event_type="MediaAnalysisRequested",
+                    payload={"evidence_id": evidence_id, "video_role": body.video_role},
+                )
+            )
+            return {"event_id": event_id, "status": "QUEUED"}
 
     @router.get("/evidence/{evidence_id}/media-analysis")
     def get_media_analysis_endpoint(
@@ -190,27 +194,32 @@ def create_phase_11_router(store: DomainStore, principal: Any) -> APIRouter:
             if not meta_row:
                 raise NotFoundError("MediaMetadata")
 
-            # Generate contact sheet image
-            from PIL import Image
-
-            frames = (
+            derivative = (
                 conn.execute(
-                    select(t.media_sampled_frames).where(
-                        t.media_sampled_frames.c.media_metadata_id == meta_row["id"]
+                    select(t.derivatives).where(
+                        t.derivatives.c.evidence_id == evidence_id,
+                        t.derivatives.c.kind == "CONTACT_SHEET",
                     )
                 )
                 .mappings()
-                .all()
+                .first()
             )
+            if not derivative or storage is None:
+                raise ApplicationError(
+                    "MEDIA_NOT_READY", "No decoded contact sheet is available", 409
+                )
+            stream = storage.read(
+                derivative["object_key"], derivative["object_version"], storage.clean
+            )
+            try:
+                content = stream.read(derivative["size_bytes"] + 1)
+            finally:
+                stream.close()
+            import hashlib
 
-            image_frames: list[tuple[float, Image.Image]] = []
-            for f in frames:
-                # Synthetic/real thumbnail placeholder per sampled frame
-                thumb = Image.new("RGB", (160, 90), color=(40, 50, 60))
-                image_frames.append((float(f["timestamp_seconds"]), thumb))
-
-            sheet_bytes = generate_contact_sheet(image_frames)
-            return Response(content=sheet_bytes, media_type="image/png")
+            if hashlib.sha256(content).hexdigest() != derivative["sha256"]:
+                raise ApplicationError("HASH_MISMATCH", "Contact sheet integrity failure", 409)
+            return Response(content=content, media_type="image/png")
 
     # 2. Similarity candidates
     @router.post("/evidence/{evidence_id}/similarity-check", response_model=list[SimilarityMatch])
@@ -274,6 +283,22 @@ def create_phase_11_router(store: DomainStore, principal: Any) -> APIRouter:
                     img_bytes = None
 
             service = MediaAnalysisService(conn)
+            evidence = (
+                conn.execute(
+                    select(t.evidence).where(
+                        t.evidence.c.id == body.evidence_version_id,
+                        t.evidence.c.application_id == application_id,
+                        t.evidence.c.institution_id == institution_id,
+                        t.evidence.c.status == "ACCEPTED",
+                    )
+                )
+                .mappings()
+                .first()
+            )
+            if evidence is None:
+                raise ApplicationError(
+                    "EVIDENCE_NOT_ACCEPTED", "Admitted evidence from this application required", 422
+                )
             return service.run_equipment_detection(
                 institution_id=institution_id,
                 application_id=application_id,
@@ -334,14 +359,29 @@ def create_phase_11_router(store: DomainStore, principal: Any) -> APIRouter:
             app_id = det_row["application_id"]
             _check_institution_access(conn, institution_id, application_id=app_id, write=True)
 
+            if not conn.scalar(
+                text(
+                    "SELECT wb.elevated() AND (wb.has_role('officer') OR wb.has_role('supervisor'))"
+                )
+            ):
+                raise ApplicationError("ACCESS_DENIED", "Officer with fresh MFA required", 403)
             service = MediaAnalysisService(conn)
-            return service.record_human_count_correction(
+            result = service.record_human_count_correction(
                 detection_id=detection_id,
                 institution_id=institution_id,
                 officer_id=actor.subject,
                 corrected_count=body.corrected_count,
                 reason=body.reason,
             )
+            store.audit(
+                conn,
+                institution_id,
+                app_id,
+                "EquipmentCountCorrected",
+                {"detection_id": detection_id, "count": body.corrected_count},
+                str(uuid4()),
+            )
+            return result
 
     # 4. Spatial Floor Plan Reconciliation
     @router.post(

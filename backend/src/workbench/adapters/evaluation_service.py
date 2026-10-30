@@ -10,7 +10,7 @@ from sqlalchemy import Connection, Engine, select
 from workbench.adapters import tables as t
 from workbench.adapters.rule_registry_service import RuleRegistryService
 from workbench.modules.evaluation.evaluator import DeterministicEvaluator
-from workbench.platform.errors import NotFoundError
+from workbench.platform.errors import ApplicationError, NotFoundError
 
 
 class EvaluationService:
@@ -51,6 +51,34 @@ class EvaluationService:
     ) -> dict[str, Any]:
         # 1. Fetch active rule release and its member rules
         release, rules = self.rule_service.get_active_release(conn, as_of_date=evaluation_as_of)
+        app = (
+            conn.execute(
+                select(t.applications)
+                .where(
+                    t.applications.c.id == application_id,
+                    t.applications.c.institution_id == institution_id,
+                )
+                .with_for_update()
+            )
+            .mappings()
+            .first()
+        )
+        if not app:
+            raise NotFoundError("Application not found")
+        revision = (
+            conn.execute(
+                select(t.revisions).where(
+                    t.revisions.c.application_id == application_id,
+                    t.revisions.c.revision == app["revision"],
+                )
+            )
+            .mappings()
+            .first()
+        )
+        if not revision:
+            raise ApplicationError("REVISION_REQUIRED", "Frozen revision required", 409)
+        frozen_evidence = revision["manifest"].get("evidence", [])
+        evidence_ids = [e["id"] for e in frozen_evidence]
 
         # 2. Fetch latest frozen fact-set for application
         fact_set_row = (
@@ -98,12 +126,12 @@ class EvaluationService:
             .all()
         )
 
-        claims: dict[str, Any] = {}
+        claims: dict[str, Any] = dict(revision["manifest"].get("declared_facts", {}))
         for c in claims_rows:
             pred = c["predicate"]
             val = c["declared_value"]
-            claims[pred] = val
-            claims[f"{c['subject']}.{pred}"] = val
+            claims.setdefault(pred, val)
+            claims.setdefault(f"{c['subject']}.{pred}", val)
 
         # 4. Check for missing evidence slots
         slots_rows = (
@@ -116,6 +144,7 @@ class EvaluationService:
                 select(t.evidence.c.slot_id).where(
                     t.evidence.c.application_id == application_id,
                     t.evidence.c.status == "ACCEPTED",
+                    t.evidence.c.id.in_(evidence_ids),
                 )
             )
             .scalars()
@@ -129,7 +158,21 @@ class EvaluationService:
         evidence_manifest = {
             "application_id": application_id,
             "missing_slots": missing_slots,
+            "evidence": frozen_evidence,
         }
+        observations = [
+            dict(o)
+            for o in conn.execute(
+                select(t.source_observations).where(
+                    t.source_observations.c.institution_id == institution_id,
+                    t.source_observations.c.evidence_version_id.in_(evidence_ids),
+                )
+            ).mappings()
+        ]
+        evidence_manifest["source_observations"] = [
+            {k: v.isoformat() if hasattr(v, "isoformat") else v for k, v in o.items()}
+            for o in observations
+        ]
 
         # 5. Fetch application revision if exists
         app_rev = (
@@ -194,6 +237,18 @@ class EvaluationService:
                     input_type="FACT_SET",
                     input_id=fact_set_id,
                     content_hash=fact_set_hash,
+                )
+            )
+        for ev in frozen_evidence:
+            conn.execute(
+                t.run_inputs.insert().values(
+                    id=str(uuid.uuid4()),
+                    run_id=eval_result.run_id,
+                    institution_id=institution_id,
+                    application_id=application_id,
+                    input_type="EVIDENCE",
+                    input_id=ev["id"],
+                    content_hash=ev["sha256"],
                 )
             )
 

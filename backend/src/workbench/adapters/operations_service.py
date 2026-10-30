@@ -10,7 +10,9 @@ from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from workbench.adapters import tables as t
-from workbench.modules.operations.service import OperationsService as CoreOperationsService
+from workbench.adapters.operations_application_service import (
+    OperationsService as CoreOperationsService,
+)
 from workbench.platform.errors import ApplicationError
 from workbench.workflows.contracts import OperationStatus
 

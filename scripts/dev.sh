@@ -6,7 +6,7 @@ uv run --project backend python -m workbench.tools bootstrap
 case "${1:-native}" in
   native) exec uv run --project backend uvicorn workbench.api.main:app --host 127.0.0.1 --port 8000 --no-access-log ;;
   up)
-    docker compose --env-file .env -f infra/compose/compose.yaml build migrate parser
+    docker compose --env-file .env -f infra/compose/compose.yaml build migrate parser media-worker
     docker compose --env-file .env -f infra/compose/compose.yaml up -d --wait
     uv run --project backend python -m workbench.tools seed-db
     uv run --project backend python -m workbench.tools seed-buckets ;;

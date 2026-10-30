@@ -1,6 +1,8 @@
-# SIH 2026 — AICTE Evidence and Compliance Workbench
+# NiyamFlow — AICTE Approval and Compliance Workbench
 
-This repository contains the consolidated research and solution specification for **AICTE PS26261**, focused on evidence-led application validation, document authentication, regulatory compliance, rectification, auditability, and officer review.
+This repository now includes a development prototype for **SIH26262**: governed approval routes, continuing undertakings and renewals, committee appointment planning, deadline alerts, scoped dashboards and consolidated reports. It reuses the evidence and security foundation originally built for PS26261. The earlier PS26261 research remains background material.
+
+Start with [NiyamFlow implementation and prototype guide](docs/development/NIYAMFLOW_IMPLEMENTATION.md). After migrating and starting the domain API, open **http://127.0.0.1:8000/niyam**. All workspaces use authenticated APIs; the included process pack is explicitly illustrative and requires independent publication approval.
 
 ## Start here
 
@@ -53,7 +55,7 @@ Temporary rendered page images used only for visual QA are intentionally exclude
 
 ## Run the full test suite
 
-Execute all 179 tests with zero skips across Phases 0 through 15:
+Run the suite with the external services enabled to exercise their integration checks. Skipped checks do not count as verified:
 
 ```powershell
 # PowerShell

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -23,6 +24,7 @@ from workbench.modules.rule_governance import (
     ReplayBundle,
     RuleGovernanceService,
 )
+from workbench.modules.rule_governance.service import compute_canonical_hash
 from workbench.platform.errors import ApplicationError, NotFoundError
 
 
@@ -144,7 +146,7 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
                 submission_date=body.submission_date,
                 evaluation_time=body.evaluation_time,
                 author_id=actor.subject,
-                author_identity=actor.subject,
+                author_identity=str(store.actor(conn)["person_id"]),
                 candidate_rules=body.candidate_rules,
                 is_hypothetical=body.is_hypothetical,
             )
@@ -199,7 +201,9 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
                 )
             row = (
                 conn.execute(
-                    select(t.rule_candidates).where(t.rule_candidates.c.id == candidate_id)
+                    select(t.rule_candidates)
+                    .where(t.rule_candidates.c.id == candidate_id)
+                    .with_for_update()
                 )
                 .mappings()
                 .first()
@@ -222,7 +226,9 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
                 )
             row = (
                 conn.execute(
-                    select(t.rule_candidates).where(t.rule_candidates.c.id == candidate_id)
+                    select(t.rule_candidates)
+                    .where(t.rule_candidates.c.id == candidate_id)
+                    .with_for_update()
                 )
                 .mappings()
                 .first()
@@ -230,7 +236,12 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
             if not row:
                 raise NotFoundError("RuleCandidate")
 
+            if row["status"] == "PUBLISHED":
+                raise ApplicationError(
+                    "IMMUTABLE_RELEASE", "Published candidates cannot be edited", 409
+                )
             gates = FourGates.model_validate(row["four_gates"])
+            gates.details.pop("approved_rules_hash", None)
             if body.source_text_checked is not None:
                 gates.source_text_checked = body.source_text_checked
             if body.scope_and_ambiguity_resolved is not None:
@@ -255,6 +266,8 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
                 .values(
                     four_gates=gates.model_dump(),
                     status=new_status,
+                    approver_id=None,
+                    approver_identity=None,
                 )
             )
             return {
@@ -279,7 +292,9 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
 
             row = (
                 conn.execute(
-                    select(t.rule_candidates).where(t.rule_candidates.c.id == candidate_id)
+                    select(t.rule_candidates)
+                    .where(t.rule_candidates.c.id == candidate_id)
+                    .with_for_update()
                 )
                 .mappings()
                 .first()
@@ -315,22 +330,15 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
                     .mappings()
                     .all()
                 )
-                outcome_map = {o["rule_id"]: o["outcome"] for o in outcomes}
+                outcome_map = {
+                    o["rule_id"]: {"POTENTIAL_DEFICIENCY": "DEFICIENT"}.get(
+                        o["outcome"], o["outcome"]
+                    )
+                    for o in outcomes
+                }
 
-                # Get facts for run if fact_set_id exists
-                facts: dict[str, Any] = {}
-                fact_set_id = r.get("fact_set_id")
-                if fact_set_id:
-                    f_row = conn.execute(
-                        select(t.fact_sets.c.canonical_hash).where(t.fact_sets.c.id == fact_set_id)
-                    ).first()
-                    if f_row:
-                        facts = {
-                            "approved_intake": 60,
-                            "requested_seats": 12,
-                            "bandwidth_mbps": 100,
-                        }
-
+                snapshot = r.get("manifest") or {}
+                facts = {**snapshot.get("facts", {}), **snapshot.get("claims", {})}
                 frozen_runs.append(
                     {
                         "run_id": run_id,
@@ -339,27 +347,6 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
                         "requirement_outcomes": outcome_map,
                     }
                 )
-
-            # If no stored runs exist yet and actor is supervisor/admin,
-            # simulate against synthetic baseline run
-            if not frozen_runs and is_supervisor_or_admin:
-                frozen_runs = [
-                    {
-                        "run_id": "seed-run-1",
-                        "application_id": "app-seed-1",
-                        "facts": {
-                            "approved_intake": 60,
-                            "requested_seats": 12,
-                            "bandwidth_mbps": 100,
-                            "pc_count": 200,
-                            "printer_count": 6,
-                        },
-                        "requirement_outcomes": {
-                            "APH-INTL-PG-001": "DEFICIENT",
-                            "APH-INFRA-BW-001": "DEFICIENT",
-                        },
-                    }
-                ]
 
             sim_result = RuleGovernanceService.simulate_candidate_impact(
                 candidate_id=candidate_id,
@@ -446,7 +433,9 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
 
             row = (
                 conn.execute(
-                    select(t.rule_candidates).where(t.rule_candidates.c.id == candidate_id)
+                    select(t.rule_candidates)
+                    .where(t.rule_candidates.c.id == candidate_id)
+                    .with_for_update()
                 )
                 .mappings()
                 .first()
@@ -455,9 +444,15 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
                 raise NotFoundError("RuleCandidate")
 
             approver_id = actor.subject
-            approver_identity = (
-                body.approver_identity if body and body.approver_identity else actor.subject
-            )
+            if (
+                body
+                and body.approver_identity
+                and body.approver_identity.strip().lower() == row["author_identity"].strip().lower()
+            ):
+                raise ApplicationError(
+                    "DUAL_CONTROL_VIOLATION", "Author identity cannot approve", 403
+                )
+            approver_identity = str(store.actor(conn)["person_id"])
 
             # Enforce dual control and alias check
             try:
@@ -483,6 +478,7 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
             gates = FourGates.model_validate(row["four_gates"])
             gates.authorized_policy_approved = True
             gates.details["approver_id"] = approver_id
+            gates.details["approved_rules_hash"] = compute_canonical_hash(row["candidate_rules"])
 
             if not gates.all_passed:
                 raise ApplicationError(
@@ -522,7 +518,9 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
 
             row = (
                 conn.execute(
-                    select(t.rule_candidates).where(t.rule_candidates.c.id == candidate_id)
+                    select(t.rule_candidates)
+                    .where(t.rule_candidates.c.id == candidate_id)
+                    .with_for_update()
                 )
                 .mappings()
                 .first()
@@ -538,11 +536,22 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
                     422,
                 )
 
+            approved_gates = FourGates.model_validate(row["four_gates"])
+            if not approved_gates.all_passed or approved_gates.details.get(
+                "approved_rules_hash"
+            ) != compute_canonical_hash(row["candidate_rules"]):
+                raise ApplicationError(
+                    "STALE_APPROVAL",
+                    "Candidate content must match the independently approved hash",
+                    409,
+                )
+            if row["status"] == "PUBLISHED":
+                raise ApplicationError("ALREADY_PUBLISHED", "Candidate is already published", 409)
             manifest = RuleGovernanceService.create_published_release_manifest(
                 candidate=dict(row),
                 approver_id=row["approver_id"],
                 approver_identity=row["approver_identity"],
-                published_at="2026-10-28T12:00:00Z",
+                published_at=datetime.now(UTC).isoformat(),
             )
 
             published_release_id = str(uuid.uuid4())
@@ -694,11 +703,34 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
                 conn, institution_id, application_id=application_id, write=False
             )
 
-            facts = {"approved_intake": 60, "requested_seats": 12, "bandwidth_mbps": 100}
-            ev_manifest = {"evidence_version_id": "ev-v1", "clean_hash": "a1b2c3d4"}
-            source_obs = [{"claim_id": "c1", "status": "VERIFIED"}]
-            rule_hashes = {"APH-INTL-PG-001": "hash-r1", "APH-INFRA-BW-001": "hash-r2"}
-
+            if not conn.scalar(text(ELEVATED_ROLES_SQL)):
+                raise ApplicationError(
+                    "ACCESS_DENIED", "Replay exports require elevated reviewer permission", 403
+                )
+            snapshot = run_row.get("manifest") or {}
+            if not all(k in snapshot for k in ("facts", "claims", "rules", "evidence_manifest")):
+                raise ApplicationError(
+                    "LEGACY_RUN_NOT_REPLAYABLE", "Run lacks frozen executable inputs", 409
+                )
+            facts = snapshot["facts"]
+            ev_manifest = snapshot["evidence_manifest"]
+            source_obs = ev_manifest.get("source_observations", [])
+            rule_hashes = {r["rule_id"]: r["content_hash"] for r in snapshot["rules"]}
+            outcomes = [
+                dict(o)
+                for o in conn.execute(
+                    select(t.requirement_outcomes).where(t.requirement_outcomes.c.run_id == run_id)
+                ).mappings()
+            ]
+            output_keys = (
+                "rule_id",
+                "outcome",
+                "rationale",
+                "observed_value",
+                "expected_value",
+                "calculation_trace",
+            )
+            expected = [{k: o[k] for k in output_keys} for o in outcomes]
             bundle = RuleGovernanceService.build_replay_bundle(
                 run_id=run_id,
                 application_id=application_id,
@@ -706,6 +738,8 @@ def create_phase_12_router(store: DomainStore, principal: Callable[..., Principa
                 evidence_manifest=ev_manifest,
                 source_observations=source_obs,
                 rule_hashes=rule_hashes,
+                evaluation_snapshot=snapshot,
+                expected_outcomes=expected,
             )
 
             conn.execute(

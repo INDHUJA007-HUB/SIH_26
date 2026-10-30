@@ -406,10 +406,12 @@ class OperationsService:
                     select(t.outbox)
                     .where(
                         t.outbox.c.delivered_at.is_(None),
-                        (t.outbox.c.lease_until.is_(None))
-                        | (t.outbox.c.lease_until < lease_cutoff),
+                        t.outbox.c.lease_owner.is_not(None),
+                        t.outbox.c.lease_until < lease_cutoff,
                     )
+                    .order_by(t.outbox.c.lease_until, t.outbox.c.id)
                     .limit(command.batch_size)
+                    .with_for_update(skip_locked=True)
                 ).fetchall()
 
                 for ev in pending_events:

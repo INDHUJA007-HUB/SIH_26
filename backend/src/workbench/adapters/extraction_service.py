@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import insert, select, update
+from sqlalchemy import insert, select, true, update
 from sqlalchemy.engine import Connection, Engine
 
 from workbench.adapters import tables as t
@@ -173,7 +173,15 @@ class ExtractionService:
 
         next_version = (existing_versions[0] + 1) if existing_versions else 1
 
-        # Query all currently active extracted fields for this application
+        revision = conn.execute(
+            select(t.revisions.c.manifest)
+            .where(
+                t.revisions.c.application_id == application_id,
+            )
+            .order_by(t.revisions.c.revision.desc())
+        ).scalar()
+        evidence_ids = [e["id"] for e in (revision or {}).get("evidence", [])]
+        # Freeze only fields grounded in the selected revision, never superseded evidence.
         fields = (
             conn.execute(
                 select(
@@ -184,6 +192,12 @@ class ExtractionService:
                 .where(
                     t.extracted_fields.c.application_id == application_id,
                     t.extracted_fields.c.is_current.is_(True),
+                    (
+                        t.extracted_fields.c.evidence_version_id.in_(evidence_ids)
+                        if (revision or {}).get("evidence")
+                        or (revision or {}).get("response_window_id")
+                        else true()
+                    ),
                 )
                 .order_by(t.extracted_fields.c.field_name, t.extracted_fields.c.id)
             )

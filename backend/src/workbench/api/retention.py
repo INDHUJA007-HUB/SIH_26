@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Query, Request
 
 from workbench.adapters.domain_store import DomainStore
 from workbench.adapters.object_storage import ObjectStorage
+from workbench.adapters.retention_application_service import RetentionService
 from workbench.contracts.intake import Principal
 from workbench.modules.retention.contracts import (
     LegalHoldCreate,
@@ -19,7 +20,6 @@ from workbench.modules.retention.contracts import (
     RetentionPolicyCreate,
     RetentionPolicyResponse,
 )
-from workbench.modules.retention.service import RetentionService
 
 
 def create_retention_router(

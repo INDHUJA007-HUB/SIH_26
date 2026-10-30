@@ -20,7 +20,6 @@ from workbench.modules.retention.domain import (
     is_dependent_evidence,
     validate_retention_policy_rules,
 )
-from workbench.modules.retention.service import RetentionService
 
 __all__ = [
     "DataClass",
@@ -35,7 +34,6 @@ __all__ = [
     "RetentionPolicyCreate",
     "RetentionPolicyResponse",
     "RetentionPurgeCompletedEvent",
-    "RetentionService",
     "compute_manifest_digest",
     "is_candidate_held",
     "is_dependent_evidence",

@@ -65,6 +65,14 @@ module "telemetry" {
 
 module "ecs" {
   source                          = "../../modules/ecs"
+  enabled_units                   = var.enabled_units
+  private_subnet_ids              = module.networking.private_app_subnet_ids
+  public_subnet_ids               = module.networking.public_subnet_ids
+  tls_certificate_arn             = var.tls_certificate_arn
+  runtime_environment             = var.runtime_environment
+  runtime_secrets                 = var.runtime_secrets
+  unit_images                     = var.unit_images
+
   aws_region                      = var.aws_region
   environment                     = "staging"
   vpc_id                          = module.networking.vpc_id

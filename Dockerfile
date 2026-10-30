@@ -14,6 +14,7 @@ COPY backend/migrations ./migrations
 COPY backend/fixtures ./fixtures
 COPY backend/alembic.ini ./
 COPY output/AICTE_PS26261_Rule_Evidence_Register.json /app/output/AICTE_PS26261_Rule_Evidence_Register.json
+COPY output/AICTE_PS26261_Source_Register.json /app/output/AICTE_PS26261_Source_Register.json
 RUN .buildvenv/bin/hatchling build -t wheel -d /tmp/dist && .venv/bin/python -m pip install --quiet --no-deps /tmp/dist/*.whl && rm -rf .buildvenv && .venv/bin/python -m pip uninstall -y pip && pip uninstall -y uv pip
 
 FROM gcr.io/distroless/cc-debian13:nonroot@sha256:3ee00291cf386ec52a552e6a858d555debd74776eb4bfa53fa3df2cd6677515e AS runtime
@@ -39,4 +40,8 @@ CMD ["uvicorn", "workbench.api.main:app", "--host", "0.0.0.0", "--port", "8000",
 FROM runtime AS parser
 COPY --from=media_tools /ffprobe /usr/local/bin/ffprobe
 CMD ["python", "-m", "workbench.processing.parser_runner"]
+
+FROM parser AS media
+COPY --from=media_tools /ffmpeg /usr/local/bin/ffmpeg
+CMD ["python", "-m", "workbench.processing.media_worker"]
 

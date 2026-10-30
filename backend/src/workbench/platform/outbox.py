@@ -69,13 +69,27 @@ async def dispatch_once(settings: Settings) -> int:
                     if event["event_type"] == "EvidenceUploadCompleted"
                     else "IntakeReceiptWorkflow"
                 )
+                lifecycle_workflows = {
+                    "RectificationSubmitted": "RectificationWorkflow",
+                    "MediaAnalysisRequested": "MediaProcessingWorkflow",
+                    "DurableTimerScheduled": "DurableTimerWorkflow",
+                    "NotificationQueued": "NotificationDeliveryWorkflow",
+                    "NiyamDeadlineScheduled": "NiyamDeadlineWorkflow",
+                }
+                workflow_name = lifecycle_workflows.get(event["event_type"], workflow_name)
                 assert client is not None
                 with suppress(WorkflowAlreadyStartedError):
                     await client.start_workflow(
                         workflow_name,
                         event["id"],
                         id="outbox-" + event["id"],
-                        task_queue="intake",
+                        task_queue=(
+                            "media-processing"
+                            if event["event_type"] == "MediaAnalysisRequested"
+                            else "lifecycle"
+                            if event["event_type"] in lifecycle_workflows
+                            else "intake"
+                        ),
                         id_reuse_policy=WorkflowIDReusePolicy.REJECT_DUPLICATE,
                     )
                 with engine.begin() as connection:

@@ -288,7 +288,7 @@ class VerificationService:
                     signing_time=datetime.now(UTC) if result.get("signing_time") else None,
                     certificate_sha256=result.get("certificate_sha256"),
                     destination_safe=True,
-                    simulated=True,
+                    simulated=result["simulated"],
                     details=result["details"],
                 )
             )
@@ -299,7 +299,7 @@ class VerificationService:
             "status": result["status"].value,
             "signer_identity": result["signer_identity"],
             "signer_role": result["signer_role"].value,
-            "simulated": True,
+            "simulated": result["simulated"],
             "details": result["details"],
         }
 

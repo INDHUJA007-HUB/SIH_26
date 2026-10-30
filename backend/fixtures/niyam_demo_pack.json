@@ -1,0 +1,121 @@
+{
+  "name": "Illustrative SIH prototype pack",
+  "source_reference": "DEMO - not statutory AICTE policy",
+  "academic_cycle": 2026,
+  "demo_only": true,
+  "pause_authorized": true,
+  "routes": {
+    "ONLY_SCRUTINY": "SCRUTINY",
+    "ONLY_EVC": "EVC",
+    "SCRUTINY_PLUS_EVC": "SCRUTINY_EVC",
+    "EVC_PLUS_SAC_SHC": "EVC_REVIEW"
+  },
+  "selectors": [
+    {
+      "category": "EOA",
+      "route": "ONLY_SCRUTINY"
+    },
+    {
+      "category": "NEW",
+      "route": "ONLY_EVC"
+    },
+    {
+      "category": "NEW_INSTITUTE",
+      "route": "SCRUTINY_PLUS_EVC"
+    },
+    {
+      "category": "DEMO_REVIEW",
+      "route": "EVC_PLUS_SAC_SHC"
+    }
+  ],
+  "stages": [
+    {
+      "key": "SCRUTINY",
+      "actor_role": "OFFICER",
+      "next": {
+        "CLEAR": "DECISION",
+        "RETURN": "RE_SCRUTINY"
+      },
+      "target_seconds": 3600
+    },
+    {
+      "key": "RE_SCRUTINY",
+      "actor_role": "OFFICER",
+      "next": {
+        "CLEAR": "DECISION"
+      }
+    },
+    {
+      "key": "EVC",
+      "actor_role": "OFFICER",
+      "evc_queue": true,
+      "requires_evc_report": true,
+      "next": {
+        "CLEAR": "DECISION"
+      }
+    },
+    {
+      "key": "DECISION",
+      "actor_role": "AUTHORITY",
+      "decision": true,
+      "next": {
+        "APPROVE": "APPROVED"
+      }
+    },
+    {
+      "key": "APPROVED",
+      "actor_role": "AUTHORITY",
+      "terminal": true
+    },
+    {
+      "key": "SCRUTINY_EVC",
+      "actor_role": "OFFICER",
+      "next": {
+        "CLEAR": "EVC"
+      }
+    },
+    {
+      "key": "EVC_REVIEW",
+      "actor_role": "OFFICER",
+      "evc_queue": true,
+      "requires_evc_report": true,
+      "next": {
+        "CLEAR": "DECISION",
+        "HEARING": "SHC",
+        "APPEAL": "SAC"
+      }
+    },
+    {
+      "key": "SHC",
+      "actor_role": "COMMITTEE",
+      "next": {
+        "HEARD": "DECISION"
+      }
+    },
+    {
+      "key": "SAC",
+      "actor_role": "COMMITTEE",
+      "next": {
+        "RECOMMEND": "DECISION"
+      }
+    }
+  ],
+  "reminders": [
+    {
+      "key": "DUE",
+      "offset_seconds": 0,
+      "recipient_role": "INSTITUTION"
+    }
+  ],
+  "evc_scheduling_seconds": 3600,
+  "evc_report_seconds": 3600,
+  "notice_templates": {
+    "DEFICIENCY": "DRAFT for authorized review. Case {case_reference}. Stage {stage}. Recorded reason: {reason}.",
+    "EVC_INTIMATION": "DRAFT for authorized review. Case {case_reference}. Appointment information: {reason}."
+  },
+  "evc_report_clock": "ACTUAL_COMPLETION",
+  "new_institution_categories": [
+    "NEW",
+    "NEW_INSTITUTE"
+  ]
+}

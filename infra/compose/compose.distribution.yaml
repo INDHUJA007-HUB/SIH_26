@@ -29,3 +29,10 @@ services:
     image: ${SIH_PARSER_IMAGE:-ghcr.io/indhuja007-hub/sih_26-parser:latest}
     build: !reset null
     pull_policy: always
+  lifecycle-worker:
+    image: ${SIH_RUNTIME_IMAGE:-ghcr.io/indhuja007-hub/sih_26:latest}
+    pull_policy: never
+  media-worker:
+    image: ${SIH_MEDIA_IMAGE:-ghcr.io/indhuja007-hub/sih_26-media:latest}
+    build: !reset null
+    pull_policy: always

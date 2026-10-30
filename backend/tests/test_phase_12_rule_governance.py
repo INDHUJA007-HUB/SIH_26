@@ -598,16 +598,15 @@ def test_remedy_arithmetic_for_three_examples_and_re_evaluation_closes_intended_
     assert "finding_printer_shortfall_001" in prop_print.findings_closed
 
     # 4. Stage restriction: Intake reduction past deadline is not allowed
-    prop_intake = RuleGovernanceService.calculate_remedy(
-        application_id=app_id,
-        finding_id="finding_intake_deficiency_001",
-        rule_id="APH-INTAKE-REDUCE-001",
-        clause="Clause 3.1 — Approved Intake",
-        facts={"approved_intake": 420},
-        is_open_window=False,
-    )
-    assert prop_intake.allowed_at_current_stage is False
-    assert prop_intake.stage_restriction_reason == "Intake reduction not permitted past deadline"
+    with pytest.raises(ValueError, match="independently approved"):
+        RuleGovernanceService.calculate_remedy(
+            application_id=app_id,
+            finding_id="finding_intake_deficiency_001",
+            rule_id="APH-INTAKE-REDUCE-001",
+            clause="Clause 3.1",
+            facts={"approved_intake": 420},
+            is_open_window=False,
+        )
 
 
 def test_amendment_demo_fixture_pg_capacity_15_to_25_gives_9_vs_15(h):

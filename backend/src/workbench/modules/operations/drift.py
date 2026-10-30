@@ -40,19 +40,7 @@ class DriftAnalyzer:
 
     def _load_manifests(self) -> list[dict[str, Any]]:
         if not self.manifests_path.exists():
-            logger.warning(
-                "Manifest path %s does not exist; using synthetic test packets", self.manifests_path
-            )
-            return [
-                {
-                    "packet_id": f"SYN-PACKET-{i:03d}",
-                    "template_family": "aicte_standard_v2024"
-                    if i % 2 == 0
-                    else "legacy_scanned_tabular",
-                    "synthetic": True,
-                }
-                for i in range(1, 11)
-            ]
+            return []
         with open(self.manifests_path, encoding="utf-8") as f:
             return cast(list[dict[str, Any]], json.load(f))
 
@@ -67,56 +55,60 @@ class DriftAnalyzer:
         This process is strictly read-only and does not mutate any historical
         extraction runs or frozen fact sets in the database.
         """
-        packet_count = len(self.packets)
-        field_names = list(BENCHMARK_GROUND_TRUTH_FIELDS.keys())
+        packets = [
+            p
+            for p in self.packets
+            if p.get("ground_truth")
+            and champion_version in p.get("predictions", {})
+            and candidate_version in p.get("predictions", {})
+        ]
+        if not packets:
+            return DriftEvaluationResult(
+                candidate_version=candidate_version,
+                champion_version=champion_version,
+                benchmark_packet_count=0,
+                evaluated_field_count=0,
+                champion_precision=0,
+                challenger_precision=0,
+                champion_recall=0,
+                challenger_recall=0,
+                macro_f1_delta=0,
+                template_drift_detected=False,
+                field_metrics=[],
+                summary=(
+                    "UNMEASURED: provide frozen ground truth and both versioned prediction captures"
+                ),
+                measurement_status="UNMEASURED",
+            )
+        packet_count = len(packets)
+        field_names = sorted(set.intersection(*(set(p["ground_truth"]) for p in packets)))
         total_evaluations = packet_count * len(field_names)
-
         field_stats: dict[str, dict[str, int | float]] = {
-            fname: {
-                "ground_truth_matches": packet_count,
+            f: {
                 "champion_matches": 0,
                 "challenger_matches": 0,
                 "agreement_count": 0,
                 "conf_delta_sum": 0.0,
             }
-            for fname in field_names
+            for f in field_names
         }
-
-        # Evaluate deterministic predictions
-        template_families: set[str] = set()
         template_mismatches: dict[str, int] = {}
-
-        for p_idx, packet in enumerate(self.packets):
-            template = packet.get("template_family", "aicte_standard_v2024")
-            template_families.add(template)
-
-            for fname in BENCHMARK_GROUND_TRUTH_FIELDS:
+        for packet in packets:
+            template = packet.get("template_family", "unknown")
+            for fname in field_names:
                 stats = field_stats[fname]
-
-                # Deterministic champion behaviour (high baseline accuracy ~96%)
-                champion_correct = (hash((fname, p_idx, champion_version)) % 100) >= 4
-                if champion_correct:
-                    stats["champion_matches"] = int(stats["champion_matches"]) + 1
-
-                # Deterministic challenger behaviour
-                # Candidate might have slight drift on scanned templates
-                is_scanned = "scanned" in template.lower()
-                drift_threshold = 12 if is_scanned else 3
-                challenger_correct = (
-                    hash((fname, p_idx, candidate_version)) % 100
-                ) >= drift_threshold
-                if challenger_correct:
-                    stats["challenger_matches"] = int(stats["challenger_matches"]) + 1
-
-                if champion_correct == challenger_correct:
-                    stats["agreement_count"] = int(stats["agreement_count"]) + 1
-                else:
+                expected = packet["ground_truth"][fname]
+                champion = packet["predictions"][champion_version].get(fname, {})
+                candidate = packet["predictions"][candidate_version].get(fname, {})
+                stats["champion_matches"] += int(champion.get("value") == expected)
+                stats["challenger_matches"] += int(candidate.get("value") == expected)
+                agrees = champion.get("value") == candidate.get("value")
+                stats["agreement_count"] += int(agrees)
+                stats["conf_delta_sum"] += float(candidate.get("confidence", 0)) - float(
+                    champion.get("confidence", 0)
+                )
+                if not agrees:
                     template_mismatches[template] = template_mismatches.get(template, 0) + 1
-
-                # Confidence delta (challenger - champion)
-                champ_conf = 0.95 if champion_correct else 0.65
-                chall_conf = 0.94 if challenger_correct else 0.60
-                stats["conf_delta_sum"] = float(stats["conf_delta_sum"]) + (chall_conf - champ_conf)
 
         # Aggregate field-level metrics
         field_metrics: list[FieldDriftMetric] = []

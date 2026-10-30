@@ -21,13 +21,13 @@ try {
         $composeArgs=@('compose','--env-file','.env','-f','infra/compose/compose.yaml')
         if($Action -eq 'up') {
             if($env:WB_BUILD_NETWORK -eq 'host') {
-                foreach($target in @('runtime','parser')) {
+                foreach($target in @('runtime','parser','media')) {
                     $tag=if($target -eq 'runtime'){'foundation'}else{$target}
                     & $dockerExecutable buildx build --allow=network.host --network=host --load --target $target -t "sih-workbench:$tag" -f Dockerfile .
                     if($LASTEXITCODE -ne 0){throw 'Container build failed'}
                 }
             } else {
-                & $dockerExecutable @composeArgs build migrate parser
+                & $dockerExecutable @composeArgs build migrate parser media-worker
                 if($LASTEXITCODE -ne 0){throw 'Container build failed'}
             }
             & $dockerExecutable @composeArgs up -d --wait

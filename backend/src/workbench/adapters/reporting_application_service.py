@@ -59,6 +59,10 @@ class ReportService:
                 .first()
             )
             if existing:
+                if existing["evaluation_run_id"] != evaluation_run_id:
+                    raise ApplicationError(
+                        "REPORT_VERSION_CONFLICT", "This version belongs to another frozen run", 409
+                    )
                 return dict(existing)
 
             # 2. Fetch evaluation run
@@ -72,6 +76,13 @@ class ReportService:
             if not run_row:
                 raise ApplicationError(
                     "NOT_FOUND", f"Evaluation run {evaluation_run_id} not found", 404
+                )
+            if (
+                run_row["institution_id"] != institution_id
+                or run_row["application_id"] != application_id
+            ):
+                raise ApplicationError(
+                    "RUN_LINEAGE_MISMATCH", "Run belongs to another application", 422
                 )
 
             # 3. Fetch findings
@@ -94,13 +105,9 @@ class ReportService:
 
             # 5. Fetch source observations for institution
             obs_rows = (
-                c.execute(
-                    select(t.source_observations).where(
-                        t.source_observations.c.institution_id == institution_id
-                    )
-                )
-                .mappings()
-                .all()
+                (run_row.get("manifest") or {})
+                .get("evidence_manifest", {})
+                .get("source_observations", [])
             )
 
             # Format source observations: MUST label simulated results as SIMULATED
@@ -111,10 +118,10 @@ class ReportService:
                         "id": obs["id"],
                         "provider_code": obs["provider_code"],
                         "status": obs["status"],
-                        "mode": "SIMULATED",
-                        "simulated": True,
-                        "live_success": False,
-                        "simulated_label": "SIMULATED",
+                        "mode": obs["mode"],
+                        "simulated": obs["simulated"],
+                        "live_success": obs["live_success"],
+                        "simulated_label": "SIMULATED" if obs["simulated"] else obs["mode"],
                         "freshness_timestamp": obs["freshness_timestamp"].isoformat()
                         if hasattr(obs["freshness_timestamp"], "isoformat")
                         else str(obs["freshness_timestamp"]),
@@ -153,7 +160,7 @@ class ReportService:
                 }
                 if is_officer:
                     item["trace"] = f.get("calculation_trace") or f.get("trace")
-                    item["forensic_flags"] = ["SIMULATED_PROVENANCE_CHECK"]
+                    item["forensic_flags"] = []
                     item["internal_decision_support"] = (
                         "PRELIMINARY_AUTOMATED_FLAG_REQUIRES_OFFICER_DISPOSITION"
                     )
@@ -166,10 +173,14 @@ class ReportService:
                 "total_requirements": len(outcomes_rows),
                 "total_findings": len(findings_rows),
                 "verified_sources": len(
-                    [o for o in formatted_observations if o["status"] == "VERIFIED"]
+                    [
+                        o
+                        for o in formatted_observations
+                        if o["status"] == "VERIFIED" and not o["simulated"] and o["live_success"]
+                    ]
                 ),
-                "simulated_sources_count": len(formatted_observations),
-                "source_verification_mode": "SIMULATED",
+                "simulated_sources_count": sum(o["simulated"] for o in formatted_observations),
+                "source_verification_mode": sorted({o["mode"] for o in formatted_observations}),
             }
 
             content = {

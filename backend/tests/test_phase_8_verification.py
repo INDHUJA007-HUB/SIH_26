@@ -12,12 +12,12 @@ import pytest
 from sqlalchemy import insert, select
 
 from workbench.adapters import tables as t
+from workbench.adapters.verification_application_service import VerificationService
 from workbench.modules.verification.contracts import (
     SignatureStatus,
     SignerRole,
     SourceVerificationStatus,
 )
-from workbench.modules.verification.service import VerificationService
 from workbench.platform.errors import ApplicationError
 
 pytestmark = pytest.mark.integration
@@ -32,7 +32,7 @@ def test_capabilities_exposes_provider_modes_and_blocked_connector(client):
     assert data["source_verification_mode"] == "SIMULATED"
     assert data["production_connector_status"] == "BLOCKED_BY_MISSING_ACCESS"
     assert data["live_source_verification"] is False
-    assert data["equipment_detection_mode"] == "HEURISTIC_SIMULATED"
+    assert data["equipment_detection_mode"] == "EXPRESS_MANUAL_FALLBACK"
     assert data["ocr_engine"] == "SIMULATED_FALLBACK"
     assert data["ocr_mode"] == "SIMULATED"
 
@@ -413,16 +413,16 @@ def test_pdf_signature_and_qr_verification(h):
     resp_sig = h.call("POST", "/api/v1/verification/signatures/validate", json=sig_payload)
     assert resp_sig.status_code == 200
     sig_data = resp_sig.json()
-    assert sig_data["status"] == SignatureStatus.VALID.value
-    assert sig_data["signer_role"] == SignerRole.ISSUER.value
-    assert sig_data["simulated"] is True
+    assert sig_data["status"] == SignatureStatus.MALFORMED.value
+    assert sig_data["signer_role"] == SignerRole.UNKNOWN.value
+    assert sig_data["simulated"] is False
 
     # 2. Revoked certificate PDF signature
     revoked_pdf = b"%PDF-1.4 /ByteRange [0 10] /Contents <00> SYNTHETIC_REVOKED_CERTIFICATE %%EOF"
     sig_payload["content_base64"] = base64.b64encode(revoked_pdf).decode()
     resp_rev = h.call("POST", "/api/v1/verification/signatures/validate", json=sig_payload)
     assert resp_rev.status_code == 200
-    assert resp_rev.json()["status"] == SignatureStatus.REVOKED.value
+    assert resp_rev.json()["status"] == SignatureStatus.MALFORMED.value
 
     # 3. QR code to approved government portal
     qr_payload_safe = {
@@ -434,7 +434,7 @@ def test_pdf_signature_and_qr_verification(h):
     resp_qr_safe = h.call("POST", "/api/v1/verification/qr/validate", json=qr_payload_safe)
     assert resp_qr_safe.status_code == 200
     qr_safe_data = resp_qr_safe.json()
-    assert qr_safe_data["status"] == SignatureStatus.VALID.value
+    assert qr_safe_data["status"] == SignatureStatus.UNKNOWN.value
     assert qr_safe_data["destination_safe"] is True
 
     # 4. QR code to unapproved external domain

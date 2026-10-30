@@ -15,6 +15,7 @@ class ResponseWindowTimerWorkflow:
         self._status = "ACTIVE"
         self._cancelled = False
         self._extended_seconds = 0
+        self._generation = 0
 
     @workflow.run
     async def run(self, input_dict: dict[str, Any]) -> dict[str, Any]:
@@ -27,10 +28,25 @@ class ResponseWindowTimerWorkflow:
         )
 
         duration = input_dict.get("duration_seconds", 3600)
-        await workflow.wait_condition(
-            lambda: self._cancelled,
-            timeout=timedelta(seconds=duration + self._extended_seconds),
-        )
+        deadline = workflow.now() + timedelta(seconds=duration)
+        while not self._cancelled:
+            generation = self._generation
+            remaining = deadline - workflow.now()
+            if remaining.total_seconds() <= 0:
+                break
+
+            def changed(expected: int = generation) -> bool:
+                return self._cancelled or self._generation != expected
+
+            try:
+                await workflow.wait_condition(
+                    changed,
+                    timeout=remaining,
+                )
+            except TimeoutError:
+                break
+            deadline += timedelta(seconds=self._extended_seconds)
+            self._extended_seconds = 0
 
         if self._cancelled:
             self._status = "CANCELLED"
@@ -49,7 +65,9 @@ class ResponseWindowTimerWorkflow:
 
     @workflow.signal
     def extend_timer(self, seconds: int) -> None:
-        self._extended_seconds += seconds
+        if seconds > 0:
+            self._extended_seconds += seconds
+            self._generation += 1
 
     @workflow.query
     def status(self) -> str:

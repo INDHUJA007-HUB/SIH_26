@@ -1,3 +1,5 @@
+> **Historical record:** Unconditional completion/qualification claims below are superseded by [the 29 October review](PHASE_8_15_REVIEW_2026_10_29.md) and [remediation implementation record](PHASE_8_15_IMPLEMENTATION_2026_10_29.md). Simulated or static checks are not deployed-service qualification.
+
 # Phase 15 — Operations, Improvement, and Scale Decisions Verification
 
 **Verification Date:** 2026-10-28  

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from workbench.adapters.domain_store import DomainStore
 from workbench.adapters.object_storage import ObjectStorage
-from workbench.modules.retention.service import RetentionService as CoreRetentionService
+from workbench.adapters.retention_application_service import (
+    RetentionService as CoreRetentionService,
+)
 
 
 class RetentionService(CoreRetentionService):

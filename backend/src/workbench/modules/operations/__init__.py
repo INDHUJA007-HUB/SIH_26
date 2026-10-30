@@ -25,7 +25,6 @@ from workbench.modules.operations.drift import (
     DriftAnalyzer,
     evaluate_champion_challenger,
 )
-from workbench.modules.operations.service import OperationsService
 
 __all__ = [
     "AccessReviewSummary",
@@ -41,7 +40,6 @@ __all__ = [
     "IncidentContainmentCommand",
     "IncidentContainmentRecord",
     "OperationalHealthSummary",
-    "OperationsService",
     "QueueAgeHealth",
     "ReconciliationCommand",
     "ReconciliationItem",

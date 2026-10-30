@@ -1,0 +1,217 @@
+{
+  "label": "ILLUSTRATIVE_SYNTHETIC_EXPERIMENT",
+  "scope": "6 cases, 2 pre-authorized committees, 3 days, one visit per committee per day",
+  "cases": [
+    {
+      "id": "A",
+      "created_order": 1,
+      "due_day": 1,
+      "eligible": [
+        "C1",
+        "C2"
+      ]
+    },
+    {
+      "id": "B",
+      "created_order": 2,
+      "due_day": 1,
+      "eligible": [
+        "C1"
+      ]
+    },
+    {
+      "id": "C",
+      "created_order": 3,
+      "due_day": 2,
+      "eligible": [
+        "C2"
+      ]
+    },
+    {
+      "id": "D",
+      "created_order": 4,
+      "due_day": 2,
+      "eligible": [
+        "C1",
+        "C2"
+      ]
+    },
+    {
+      "id": "E",
+      "created_order": 5,
+      "due_day": 3,
+      "eligible": [
+        "C1"
+      ]
+    },
+    {
+      "id": "F",
+      "created_order": 6,
+      "due_day": 3,
+      "eligible": [
+        "C2"
+      ]
+    }
+  ],
+  "results": {
+    "FIFO_greedy": {
+      "scheduled": 6,
+      "late_count": 1,
+      "late_cases": [
+        "B"
+      ],
+      "total_tardiness_days": 1,
+      "assignments": [
+        {
+          "case": "A",
+          "day": 1,
+          "committee": "C1"
+        },
+        {
+          "case": "C",
+          "day": 1,
+          "committee": "C2"
+        },
+        {
+          "case": "B",
+          "day": 2,
+          "committee": "C1"
+        },
+        {
+          "case": "D",
+          "day": 2,
+          "committee": "C2"
+        },
+        {
+          "case": "E",
+          "day": 3,
+          "committee": "C1"
+        },
+        {
+          "case": "F",
+          "day": 3,
+          "committee": "C2"
+        }
+      ]
+    },
+    "earliest_deadline_greedy": {
+      "scheduled": 6,
+      "late_count": 1,
+      "late_cases": [
+        "B"
+      ],
+      "total_tardiness_days": 1,
+      "assignments": [
+        {
+          "case": "A",
+          "day": 1,
+          "committee": "C1"
+        },
+        {
+          "case": "C",
+          "day": 1,
+          "committee": "C2"
+        },
+        {
+          "case": "B",
+          "day": 2,
+          "committee": "C1"
+        },
+        {
+          "case": "D",
+          "day": 2,
+          "committee": "C2"
+        },
+        {
+          "case": "E",
+          "day": 3,
+          "committee": "C1"
+        },
+        {
+          "case": "F",
+          "day": 3,
+          "committee": "C2"
+        }
+      ]
+    },
+    "scarcity_aware_deadline_greedy": {
+      "scheduled": 6,
+      "late_count": 0,
+      "late_cases": [],
+      "total_tardiness_days": 0,
+      "assignments": [
+        {
+          "case": "B",
+          "day": 1,
+          "committee": "C1"
+        },
+        {
+          "case": "A",
+          "day": 1,
+          "committee": "C2"
+        },
+        {
+          "case": "D",
+          "day": 2,
+          "committee": "C1"
+        },
+        {
+          "case": "C",
+          "day": 2,
+          "committee": "C2"
+        },
+        {
+          "case": "E",
+          "day": 3,
+          "committee": "C1"
+        },
+        {
+          "case": "F",
+          "day": 3,
+          "committee": "C2"
+        }
+      ]
+    },
+    "exhaustive_optimum": {
+      "scheduled": 6,
+      "late_count": 0,
+      "late_cases": [],
+      "total_tardiness_days": 0,
+      "assignments": [
+        {
+          "case": "B",
+          "day": 1,
+          "committee": "C1"
+        },
+        {
+          "case": "A",
+          "day": 1,
+          "committee": "C2"
+        },
+        {
+          "case": "D",
+          "day": 2,
+          "committee": "C1"
+        },
+        {
+          "case": "C",
+          "day": 2,
+          "committee": "C2"
+        },
+        {
+          "case": "E",
+          "day": 3,
+          "committee": "C1"
+        },
+        {
+          "case": "F",
+          "day": 3,
+          "committee": "C2"
+        }
+      ],
+      "solver_status": "OPTIMAL_FOR_ENUMERATED_SYNTHETIC_MODEL",
+      "feasible_complete_assignments_checked": 72
+    }
+  },
+  "interpretation": "A simple constraint-aware heuristic matches the exact optimum on this fixture. This does not demonstrate general superiority or real-world time savings."
+}

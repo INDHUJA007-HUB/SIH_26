@@ -11,7 +11,6 @@ from workbench.adapters import tables as t
 from workbench.adapters.domain_store import DomainStore, now, row, uid
 from workbench.adapters.object_storage import ObjectStorage
 from workbench.contracts.intake import Principal
-from workbench.modules.applications.domain import require_draft
 from workbench.modules.evidence.policy import safe_filename
 from workbench.platform.config import Settings
 from workbench.platform.errors import ApplicationError
@@ -20,6 +19,47 @@ from workbench.platform.errors import ApplicationError
 class EvidenceService:
     def __init__(self, store: DomainStore, storage: ObjectStorage, settings: Settings) -> None:
         self.store, self.storage, self.settings = store, storage, settings
+
+    @staticmethod
+    def _require_upload_scope(connection: Any, application: dict[str, Any], slot_id: str) -> None:
+        if application["stage"] == "DRAFT":
+            return
+        slot_code = connection.scalar(select(t.slots.c.code).where(t.slots.c.id == slot_id))
+        windows = (
+            connection.execute(
+                select(t.response_windows).where(
+                    t.response_windows.c.application_id == application["id"],
+                    t.response_windows.c.status == "OPEN",
+                    t.response_windows.c.deadline > now(),
+                    t.response_windows.c.current_revision == application["revision"],
+                )
+            )
+            .mappings()
+            .all()
+        )
+        from workbench.adapters import niyam_tables as n
+
+        # Continuing obligations can authorize a bounded renewal upload independently
+        # of the original intake revision. They do not extend regulatory validity.
+        renewal_permit = connection.scalar(
+            select(n.permits.c.id)
+            .join(n.obligations, n.obligations.c.id == n.permits.c.obligation_id)
+            .where(
+                n.permits.c.institution_id == application["institution_id"],
+                n.permits.c.application_id == application["id"],
+                n.permits.c.slot_id == slot_id,
+                n.permits.c.revoked_at.is_(None),
+                n.permits.c.expires_at > now(),
+                n.obligations.c.state != "CANCELLED",
+                (n.obligations.c.kind == "DOCUMENT_VALIDITY")
+                | (n.obligations.c.state != "VERIFIED"),
+            )
+            .limit(1)
+        )
+        if not renewal_permit and not any(slot_code in w["allowed_slots"] for w in windows):
+            raise ApplicationError(
+                "UPLOAD_SCOPE_DENIED", "No current response window permits this slot", 409
+            )
 
     def initiate(
         self, principal: Principal, app_id: str, payload: dict[str, Any], key: str, request: str
@@ -34,7 +74,7 @@ class EvidenceService:
             )
 
             def operation() -> dict[str, Any]:
-                require_draft(application["stage"])
+                self._require_upload_scope(connection, application, payload["slot_id"])
                 if payload["size_bytes"] > self.settings.max_upload_bytes:
                     raise ApplicationError(
                         "UPLOAD_LIMIT", "The file exceeds the configured size limit", 413
@@ -177,7 +217,7 @@ class EvidenceService:
                 raise ApplicationError("NOT_FOUND", "Upload session is not available", 404)
             self.store.institution_editor(connection, upload["institution_id"])
             application = self.store.application(connection, upload["application_id"])
-            require_draft(application["stage"])
+            self._require_upload_scope(connection, application, upload["slot_id"])
             count = math.ceil(upload["expected_size"] / upload["part_size"])
             if upload["status"] != "PENDING" or upload["expires_at"] <= now():
                 raise ApplicationError("UPLOAD_EXPIRED", "The upload session has expired", 410)
@@ -251,7 +291,7 @@ class EvidenceService:
                 )
                 if existing:
                     return {"id": existing["id"], "status": existing["status"]}
-                require_draft(application["stage"])
+                self._require_upload_scope(connection, application, upload["slot_id"])
                 if upload["status"] != "PENDING" or upload["expires_at"] <= now():
                     raise ApplicationError(
                         "UPLOAD_EXPIRED", "The upload session is no longer active", 410

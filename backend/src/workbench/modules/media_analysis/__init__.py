@@ -13,7 +13,6 @@ from workbench.modules.media_analysis.contracts import (
     VideoRolePolicy,
 )
 from workbench.modules.media_analysis.service import (
-    MediaAnalysisService,
     compute_average_hash,
     compute_difference_hash,
     extract_gps_and_exif,
@@ -29,7 +28,6 @@ __all__ = [
     "EquipmentDetectionStatus",
     "FloorPlanReconciliationRecord",
     "FloorPlanStatus",
-    "MediaAnalysisService",
     "ModelMode",
     "SampledFrame",
     "SimilarityMatch",

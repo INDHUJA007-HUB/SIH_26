@@ -11,11 +11,15 @@ from uuid import uuid4
 from sqlalchemy import Connection, Engine, desc, insert, select, update
 
 from workbench.adapters import tables as t
+from workbench.adapters.application_service import ApplicationService
+from workbench.adapters.tasks_alerts_application_service import TasksAlertsService
+from workbench.modules.applications.domain import digest
 from workbench.modules.rectification.contracts import (
     FindingDiffClassification,
     FindingDiffItem,
     WindowStatus,
 )
+from workbench.modules.tasks_alerts.contracts import ScheduleTimerRequest
 from workbench.platform.errors import ApplicationError
 
 
@@ -47,7 +51,14 @@ class RectificationService:
         def _execute(c: Connection) -> dict[str, Any]:
             # Fetch application
             app_row = (
-                c.execute(select(t.applications).where(t.applications.c.id == application_id))
+                c.execute(
+                    select(t.applications)
+                    .where(
+                        t.applications.c.id == application_id,
+                        t.applications.c.institution_id == institution_id,
+                    )
+                    .with_for_update()
+                )
                 .mappings()
                 .first()
             )
@@ -82,6 +93,10 @@ class RectificationService:
 
             win_id = str(uuid4())
             now = datetime.now(UTC)
+            if deadline <= now or max_rounds < 1 or max_rounds > 2:
+                raise ApplicationError(
+                    "INVALID_WINDOW_POLICY", "Use a future deadline and at most two rounds", 422
+                )
             c.execute(
                 insert(t.response_windows).values(
                     id=win_id,
@@ -101,6 +116,16 @@ class RectificationService:
             )
 
             # Update or create review task indicating waiting on APPLICANT
+            TasksAlertsService(c).schedule_timer(
+                ScheduleTimerRequest(
+                    institution_id=institution_id,
+                    application_id=application_id,
+                    timer_type="RESPONSE_DEADLINE",
+                    generation=round_num,
+                    deadline=deadline,
+                    details={"window_id": win_id},
+                )
+            )
             c.execute(
                 insert(t.review_tasks).values(
                     id=str(uuid4()),
@@ -168,8 +193,26 @@ class RectificationService:
             )
 
         def _execute(c: Connection) -> dict[str, Any]:
+            app = (
+                c.execute(
+                    select(t.applications)
+                    .where(
+                        t.applications.c.id == application_id,
+                        t.applications.c.institution_id == institution_id,
+                    )
+                    .with_for_update()
+                )
+                .mappings()
+                .first()
+            )
+            if not app:
+                raise ApplicationError("NOT_FOUND", "Application not found", 404)
             win = (
-                c.execute(select(t.response_windows).where(t.response_windows.c.id == window_id))
+                c.execute(
+                    select(t.response_windows)
+                    .where(t.response_windows.c.id == window_id)
+                    .with_for_update()
+                )
                 .mappings()
                 .first()
             )
@@ -189,6 +232,10 @@ class RectificationService:
                 )
 
             now = datetime.now(UTC)
+            if app["revision"] != win["current_revision"]:
+                raise ApplicationError(
+                    "STALE_WINDOW", "Application changed after window opened", 409
+                )
             win_deadline = win["deadline"]
             if win_deadline.tzinfo is None:
                 win_deadline = win_deadline.replace(tzinfo=UTC)
@@ -222,6 +269,79 @@ class RectificationService:
                         422,
                     )
 
+            prior = (
+                c.execute(
+                    select(t.revisions).where(
+                        t.revisions.c.application_id == application_id,
+                        t.revisions.c.revision == app["revision"],
+                    )
+                )
+                .mappings()
+                .first()
+            )
+            selected = {
+                e["slot_id"]: e for e in (prior["manifest"].get("evidence", []) if prior else [])
+            }
+            for code, evidence_id in replacements.items():
+                ev = (
+                    c.execute(
+                        select(t.evidence)
+                        .join(t.slots, t.slots.c.id == t.evidence.c.slot_id)
+                        .where(
+                            t.evidence.c.id == evidence_id,
+                            t.evidence.c.application_id == application_id,
+                            t.evidence.c.institution_id == institution_id,
+                            t.evidence.c.status == "ACCEPTED",
+                            t.slots.c.code == code,
+                        )
+                    )
+                    .mappings()
+                    .first()
+                )
+                if not ev:
+                    raise ApplicationError(
+                        "INVALID_REPLACEMENT",
+                        "Replacement must be accepted evidence in the permitted slot",
+                        422,
+                    )
+                selected[ev["slot_id"]] = {
+                    k: ev[k]
+                    for k in (
+                        "id",
+                        "slot_id",
+                        "sha256",
+                        "size_bytes",
+                        "media_type",
+                        "clean_key",
+                        "clean_version",
+                    )
+                }
+            revised = {
+                **dict(app),
+                "revision": app["revision"] + 1,
+                "declared_facts": {**app["declared_facts"], **updates},
+            }
+            manifest = ApplicationService.manifest(revised, list(selected.values()))
+            manifest["response_window_id"] = window_id
+            c.execute(
+                insert(t.revisions).values(
+                    id=str(uuid4()),
+                    institution_id=institution_id,
+                    application_id=application_id,
+                    revision=revised["revision"],
+                    stage=app["stage"],
+                    manifest=manifest,
+                    sha256=digest(manifest),
+                )
+            )
+            c.execute(
+                update(t.applications)
+                .where(t.applications.c.id == application_id)
+                .values(
+                    revision=revised["revision"],
+                    declared_facts=revised["declared_facts"],
+                )
+            )
             # Scope checks passed: record response and close window
             resp_id = str(uuid4())
             c.execute(
@@ -246,8 +366,35 @@ class RectificationService:
                 .where(t.response_windows.c.id == window_id)
                 .values(status=WindowStatus.SUBMITTED.value, closed_at=now)
             )
+            c.execute(
+                t.outbox.insert().values(
+                    id=str(uuid4()),
+                    institution_id=institution_id,
+                    application_id=application_id,
+                    event_type="RectificationSubmitted",
+                    payload={"response_id": resp_id},
+                )
+            )
 
             # Transition task to OFFICER review
+            c.execute(
+                update(t.durable_timers)
+                .where(
+                    t.durable_timers.c.application_id == application_id,
+                    t.durable_timers.c.timer_type == "RESPONSE_DEADLINE",
+                    t.durable_timers.c.status == "SCHEDULED",
+                )
+                .values(status="CANCELLED", cancelled_at=now)
+            )
+            c.execute(
+                update(t.review_tasks)
+                .where(
+                    t.review_tasks.c.application_id == application_id,
+                    t.review_tasks.c.task_type == "DEFICIENCY_RECTIFICATION_RESPONSE",
+                    t.review_tasks.c.status == "PENDING",
+                )
+                .values(status="COMPLETED")
+            )
             c.execute(
                 insert(t.review_tasks).values(
                     id=str(uuid4()),
@@ -296,6 +443,81 @@ class RectificationService:
         """
 
         def _execute(c: Connection) -> dict[str, Any]:
+            response = (
+                c.execute(
+                    select(t.rectification_responses)
+                    .where(
+                        t.rectification_responses.c.id == response_id,
+                        t.rectification_responses.c.application_id == application_id,
+                        t.rectification_responses.c.institution_id == institution_id,
+                    )
+                    .with_for_update()
+                )
+                .mappings()
+                .first()
+            )
+            if not response:
+                raise ApplicationError("NOT_FOUND", "Response not found", 404)
+            if response["reassessment_run_id"]:
+                prior_diff = (
+                    c.execute(
+                        select(t.reassessment_diffs).where(
+                            t.reassessment_diffs.c.response_id == response_id,
+                        )
+                    )
+                    .mappings()
+                    .first()
+                )
+                if prior_diff:
+                    return dict(prior_diff)
+            baseline = (
+                c.execute(
+                    select(t.evaluation_runs).where(
+                        t.evaluation_runs.c.id == baseline_run_id,
+                        t.evaluation_runs.c.application_id == application_id,
+                        t.evaluation_runs.c.institution_id == institution_id,
+                    )
+                )
+                .mappings()
+                .first()
+            )
+            if not baseline or not new_run_id:
+                raise ApplicationError(
+                    "FINALIZED_RUN_REQUIRED", "Provide a stored reassessment run", 422
+                )
+            new_run = (
+                c.execute(
+                    select(t.evaluation_runs).where(
+                        t.evaluation_runs.c.id == new_run_id,
+                        t.evaluation_runs.c.application_id == application_id,
+                        t.evaluation_runs.c.institution_id == institution_id,
+                    )
+                )
+                .mappings()
+                .first()
+            )
+            revision = c.execute(
+                select(t.revisions.c.id).where(
+                    t.revisions.c.application_id == application_id,
+                    t.revisions.c.revision == response["application_revision"],
+                )
+            ).scalar()
+            if (
+                not new_run
+                or new_run["application_revision_id"] != revision
+                or new_run_id == baseline_run_id
+            ):
+                raise ApplicationError(
+                    "RUN_LINEAGE_MISMATCH", "Run must evaluate the response revision", 422
+                )
+            reassessed_findings = [
+                dict(r)
+                for r in c.execute(
+                    select(t.findings).where(
+                        t.findings.c.run_id == new_run_id,
+                    )
+                ).mappings()
+            ]
             baseline_rows = (
                 c.execute(select(t.findings).where(t.findings.c.run_id == baseline_run_id))
                 .mappings()
@@ -329,10 +551,28 @@ class RectificationService:
                 in_re = key in reassessed_map
 
                 if in_base and not in_re:
+                    outcome = c.execute(
+                        select(t.requirement_outcomes.c.outcome).where(
+                            t.requirement_outcomes.c.run_id == new_run_id,
+                            t.requirement_outcomes.c.rule_id == baseline_map[key]["rule_id"],
+                        )
+                    ).scalar()
                     # Deficiency existed in baseline, but resolved in reassessment
-                    classification = FindingDiffClassification.RESOLVED
-                    rationale = "Deficiency closed by compliant rectification evidence"
-                    summary["resolved"] += 1
+                    resolved = outcome == "PASS" or (
+                        baseline_map[key]["rule_id"] == "COMPLETENESS.SLOT"
+                        and new_run["completeness_status"] == "COMPLETE"
+                    )
+                    classification = (
+                        FindingDiffClassification.RESOLVED
+                        if resolved
+                        else FindingDiffClassification.NO_LONGER_EVALUABLE
+                    )
+                    rationale = (
+                        "Requirement passed in stored reassessment"
+                        if resolved
+                        else "No passing outcome exists in reassessment"
+                    )
+                    summary["resolved" if resolved else "no_longer_evaluable"] += 1
                     diff_items.append(
                         FindingDiffItem(
                             finding_key=key,

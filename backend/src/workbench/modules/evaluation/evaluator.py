@@ -23,7 +23,7 @@ from workbench.modules.evaluation.models import (
     RequirementOutcome,
     SourceVerificationStatus,
 )
-from workbench.modules.rule_registry.models import RuleVersionRecord
+from workbench.modules.rule_registry import RuleVersionRecord
 
 
 def compute_manifest_hash(manifest: dict[str, Any]) -> str:
@@ -195,7 +195,13 @@ class DeterministicEvaluator:
             "rule_release_sha256": rule_release_hash,
             "evaluation_as_of": evaluation_as_of,
             "execution_mode": execution_mode,
-            "contains_simulated_sources": True,
+            "contains_simulated_sources": any(
+                o.get("simulated", False) for o in ev_manifest.get("source_observations", [])
+            ),
+            "evidence_manifest": ev_manifest,
+            "facts": facts,
+            "claims": claims,
+            "rules": [r.model_dump(mode="json") for r in rules],
             "canonicalization_version": "jcs-and-project-types-v1",
         }
         manifest_hash = compute_manifest_hash(manifest)

@@ -344,12 +344,18 @@ def test_concurrent_response_window_submission_and_expired_race(h):
             "authority_reference": "EXPIRED-RACE-001",
             "allowed_slots": ["FIRE_CERTIFICATE"],
             "allowed_fields": ["bandwidth_mbps"],
-            "deadline": (now - timedelta(seconds=1)).isoformat(),  # Past deadline
+            "deadline": (now + timedelta(days=1)).isoformat(),
             "max_rounds": 1,
         },
     )
     assert win_resp_expired.status_code == 200
     expired_win_id = win_resp_expired.json()["id"]
+    with h.owner.begin() as conn:
+        conn.execute(
+            t.response_windows.update()
+            .where(t.response_windows.c.id == expired_win_id)
+            .values(deadline=now - timedelta(seconds=1))
+        )
 
     resp_late = h.call(
         "POST",

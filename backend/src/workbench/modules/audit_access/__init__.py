@@ -9,13 +9,11 @@ from workbench.modules.audit_access.contracts import (
     CheckpointRecord,
     StreamOutcome,
 )
-from workbench.modules.audit_access.service import AuditAccessService
 
 __all__ = [
     "AccessAction",
     "AccessEventRecord",
     "AccessResult",
-    "AuditAccessService",
     "AuditEventRecord",
     "AuditExportManifest",
     "CheckpointRecord",

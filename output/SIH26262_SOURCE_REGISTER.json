@@ -1,0 +1,181 @@
+{
+  "problem_statement": "SIH26262",
+  "prepared_on": "2026-10-30",
+  "sources": [
+    {
+      "id": "R01",
+      "title": "Official SIH 2026 problem statements, entry SIH26262",
+      "url": "https://www.sih.gov.in/sih2026PS",
+      "kind": "official_problem_brief",
+      "evidence": "public_text",
+      "supports": "Problem scope from the earlier successful retrieval; not an independently verified official judging rubric.",
+      "limits": "Public listing does not establish access to production APIs or permission to issue decisions. Fresh retrieval during evaluator review returned HTTP 403; latest availability was not reconfirmed.",
+      "retrieved_on": "2026-10-30",
+      "retrieval_timezone": "Asia/Kolkata"
+    },
+    {
+      "id": "R02",
+      "title": "AICTE Approval Process Handbook 2024–25 to 2026–27",
+      "url": "https://www.aicte.gov.in/sites/default/files/APH%20Final.pdf",
+      "kind": "official_regulatory_baseline",
+      "evidence": "official_pdf_opened_231_pages",
+      "locators": [
+        "Clauses 1.8–1.10",
+        "Annexure 7, printed page 100"
+      ],
+      "supports": "Established portal and committee process. Chapter 1 clauses 1.8–1.10, printed pages 7–8 (PDF pages 23–24), describe applicable committee selection, online proceedings with exceptional offline mode, and competent-authority decisions.",
+      "limits": "Not an exhaustive current amendment review or a legal opinion; scope-specific policy activation still needs approval.",
+      "retrieved_on": "2026-10-30",
+      "retrieval_timezone": "Asia/Kolkata"
+    },
+    {
+      "id": "R03",
+      "title": "NIC Udupi: eOffice capabilities",
+      "url": "https://udupi.nic.in/en/nic/",
+      "kind": "government_product_documentation",
+      "evidence": "public_page",
+      "supports": "Electronic approvals, exchange, signatures, integration and scoped MIS.",
+      "limits": "No authenticated deployment inspected; no absence claim about AICTE-specific capabilities.",
+      "retrieved_on": "2026-10-30",
+      "retrieval_timezone": "Asia/Kolkata"
+    },
+    {
+      "id": "R04",
+      "title": "NIC Informatics: Chittoor FPMS",
+      "url": "https://informatics.nic.in/files/websites/july-2026/chittoor.php",
+      "kind": "government_implementation_account",
+      "evidence": "public_primary_publisher_page",
+      "supports": "Pendency tracking and centralized administrative dashboards already exist.",
+      "limits": "Reported benefits were not independently benchmarked in this review.",
+      "retrieved_on": "2026-10-30",
+      "retrieval_timezone": "Asia/Kolkata"
+    },
+    {
+      "id": "R05",
+      "title": "Creatrix Campus accreditation management product",
+      "url": "https://www.creatrixcampus.com/accreditation-management-software",
+      "kind": "vendor_claim",
+      "evidence": "search_indexed_product_page_text; subsequent_direct_open_502",
+      "supports": "Configurable accreditation workflows, reviewer and committee work, visit planning and reporting.",
+      "limits": "Not an executed product test, independent performance audit, or proof of exact SIH26262 coverage.",
+      "retrieved_on": "2026-10-30",
+      "retrieval_timezone": "Asia/Kolkata"
+    },
+    {
+      "id": "R06",
+      "title": "vmedulife product catalogue",
+      "url": "https://vmedulife.com/products/",
+      "kind": "vendor_claim",
+      "evidence": "public_product_page_opened",
+      "supports": "Academic, accreditation, IQAC and committee tools are established adjacent products.",
+      "limits": "Not a regulator-wide deployment audit or a verified market-share comparison.",
+      "retrieved_on": "2026-10-30",
+      "retrieval_timezone": "Asia/Kolkata"
+    },
+    {
+      "id": "R07",
+      "title": "Camunda process orchestration",
+      "url": "https://camunda.com/orchestrate/processes/",
+      "kind": "vendor_platform_description",
+      "evidence": "public_primary_page",
+      "supports": "Durable orchestration, analytics and process evolution are established patterns.",
+      "limits": "Vendor scale/performance claims were not reproduced; not a recommendation to migrate this repository.",
+      "retrieved_on": "2026-10-30",
+      "retrieval_timezone": "Asia/Kolkata"
+    },
+    {
+      "id": "R08",
+      "title": "Camunda 8 process instance migration",
+      "url": "https://docs.camunda.io/docs/components/concepts/process-instance-migration/",
+      "kind": "official_technical_documentation",
+      "evidence": "public_documentation_opened",
+      "supports": "Running process versions can be migrated under explicit mappings and constraints.",
+      "limits": "Does not validate a local migration implementation or justify automatic regulatory rule changes.",
+      "retrieved_on": "2026-10-30",
+      "retrieval_timezone": "Asia/Kolkata"
+    },
+    {
+      "id": "R09",
+      "title": "Google OR-Tools CP-SAT solver",
+      "url": "https://developers.google.com/optimization/cp/cp_solver",
+      "kind": "official_technical_documentation",
+      "evidence": "public_documentation_opened",
+      "supports": "Constraint solving and explicit optimal, feasible, infeasible and unknown statuses.",
+      "limits": "Does not establish national scheduling gains; prototype uses a separate exhaustive toy model.",
+      "retrieved_on": "2026-10-30",
+      "retrieval_timezone": "Asia/Kolkata"
+    },
+    {
+      "id": "R10",
+      "title": "Temporal workflows and replay",
+      "url": "https://docs.temporal.io/workflows",
+      "kind": "official_technical_documentation",
+      "evidence": "public_documentation",
+      "supports": "Durable workflows use recorded event histories and deterministic replay.",
+      "limits": "A framework capability does not prove local recovery tests or exactly-once external delivery.",
+      "retrieved_on": "2026-10-30",
+      "retrieval_timezone": "Asia/Kolkata"
+    }
+    ,
+    {
+      "id": "R11",
+      "title": "Perron, Didier and Gay (2023): The CP-SAT-LP Solver (Invited Talk)",
+      "url": "https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.CP.2023.3",
+      "kind": "primary_research_publication",
+      "evidence": "publisher_page_opened",
+      "supports": "Constraint solver technical provenance; LIPIcs CP 2023, 3:1–3:2; DOI 10.4230/LIPIcs.CP.2023.3.",
+      "limits": "Short invited-talk publication; not an AICTE scheduling trial or evidence of local performance improvement.",
+      "retrieved_on": "2026-10-30"
+    },
+    {
+      "id": "R12",
+      "title": "NIST (2023): Artificial Intelligence Risk Management Framework, AI RMF 1.0",
+      "url": "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf",
+      "kind": "primary_voluntary_framework",
+      "evidence": "official_pdf_opened_48_pages",
+      "locators": ["Sections 3.1–3.7", "GOVERN 3.2"],
+      "supports": "Responsible AI design criteria including oversight roles, reliability, transparency, privacy and harmful bias management.",
+      "limits": "Voluntary guidance; not Indian statutory authority or evidence that project controls are implemented and effective.",
+      "retrieved_on": "2026-10-30"
+    },
+    {
+      "id": "R13",
+      "title": "Tax, Verenich, La Rosa and Dumas: Predictive Business Process Monitoring with LSTM Neural Networks",
+      "url": "https://arxiv.org/abs/1612.02130",
+      "kind": "primary_research_manuscript",
+      "evidence": "author_manuscript_page_opened; 2016_submission_2017_revision",
+      "supports": "Historical process logs as a basis for predictive monitoring; dataset dependence motivates local evaluation.",
+      "limits": "Does not validate predictions or accuracy on this repository or AICTE records.",
+      "retrieved_on": "2026-10-30"
+    }
+  ],
+  "research_boundaries": [
+    "Public primary-source desk research only.",
+    "No private AICTE or vendor account accessed.",
+    "No claim that unmentioned competitor features are absent.",
+    "No vendor pricing or performance independently tested.",
+    "No team-contact messages sent."
+  ],
+  "student_repository_search": {
+    "queries": [
+      "site:github.com \"SIH26262\"",
+      "site:github.com \"AICTE\" \"EVC\" \"workflow\" approval",
+      "site:github.com \"AICTE\" \"pendency\" workflow"
+    ],
+    "result": "No verifiable exact-statement student implementation located in these indexed searches. A problem-list/submission-history repository was excluded as a solution comparator.",
+    "limitation": "Search visibility is incomplete and cannot establish absence of competing implementations."
+  },
+  "local_evidence": {
+    "repository_review": [
+      "README.md",
+      "docs/development/PHASE_8_15_IMPLEMENTATION_2026_10_29.md",
+      "backend/src/workbench/adapters/tables.py",
+      "backend/src/workbench/workflows/screening.py",
+      "backend/src/workbench/workflows/lifecycle.py"
+    ],
+    "key_finding": "Existing applications.stage allows only DRAFT/SUBMITTED; new approval lifecycle records are required.",
+    "executed_experiment": "research/sih26262/scheduling_experiment.py",
+    "result_artifact": "research/sih26262/scheduling_results.json",
+    "experiment_scope": "Synthetic six-case scheduling fixture; 72 eligible complete assignments checked exhaustively. Not real AICTE field data."
+  }
+}

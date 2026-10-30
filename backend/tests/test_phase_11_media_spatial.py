@@ -5,15 +5,19 @@ and spatial floor plan reconciliation tests.
 from __future__ import annotations
 
 import base64
+import hashlib
 import io
 from datetime import UTC, datetime, timedelta
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
 from PIL import Image
 from sqlalchemy import insert, select, update
 
+from workbench.activities.media_processing import process_media
 from workbench.adapters import tables as t
+from workbench.adapters.object_storage import ObjectStorage
 from workbench.modules.media_analysis.contracts import (
     EquipmentCategory,
     EquipmentDetectionStatus,
@@ -41,7 +45,10 @@ def _create_synthetic_image(color: tuple[int, int, int] = (100, 150, 200)) -> by
     return out.getvalue()
 
 
-def _setup_evidence_records(h, inst_id: str, app_id: str) -> tuple[str, str]:
+def _setup_evidence_records(
+    h, inst_id: str, app_id: str, content: bytes | None = None
+) -> tuple[str, str]:
+    content = content or _create_synthetic_image()
     slot_id = str(uuid4())
     upload_id = str(uuid4())
     ev_ver_id = str(uuid4())
@@ -64,9 +71,9 @@ def _setup_evidence_records(h, inst_id: str, app_id: str) -> tuple[str, str]:
                 slot_id=slot_id,
                 actor_id=h.actors["a"],
                 filename="lab101.mp4",
-                media_type="video/mp4",
+                media_type="image/jpeg",
                 expected_size=1048576,
-                expected_sha256="0" * 64,
+                expected_sha256=hashlib.sha256(content).hexdigest(),
                 object_key=f"quarantine/{ev_ver_id}.mp4",
                 mode="SINGLE",
                 part_size=5 * 1024 * 1024,
@@ -83,10 +90,10 @@ def _setup_evidence_records(h, inst_id: str, app_id: str) -> tuple[str, str]:
                 upload_id=upload_id,
                 quarantine_key=f"quarantine/{ev_ver_id}.mp4",
                 quarantine_version="1",
-                sha256="0" * 64,
-                media_type="video/mp4",
+                sha256=hashlib.sha256(content).hexdigest(),
+                media_type="image/jpeg",
                 filename="lab101.mp4",
-                size_bytes=1048576,
+                size_bytes=len(content),
                 status="QUARANTINED",
                 clean_key=None,
                 clean_version=None,
@@ -103,6 +110,29 @@ def _setup_evidence_records(h, inst_id: str, app_id: str) -> tuple[str, str]:
             )
         )
     return ev_ver_id, ev_ver_id
+
+
+def _process_captured_image(h, evidence_id, content):
+    with h.owner.begin() as conn:
+        event_id = conn.scalar(
+            select(t.outbox.c.id)
+            .where(
+                t.outbox.c.application_id
+                == conn.scalar(
+                    select(t.evidence.c.application_id).where(t.evidence.c.id == evidence_id)
+                ),
+                t.outbox.c.event_type == "MediaAnalysisRequested",
+                t.outbox.c.payload["evidence_id"].as_string() == evidence_id,
+            )
+            .order_by(t.outbox.c.created_at.desc())
+            .limit(1)
+        )
+    with (
+        patch.object(ObjectStorage, "read", side_effect=lambda *a, **k: io.BytesIO(content)),
+        patch("workbench.adapters.object_storage.boto3.client") as client,
+    ):
+        client.return_value.put_object.return_value = {"VersionId": "test-version"}
+        return process_media(event_id)
 
 
 def test_video_role_duration_policy_differentiation(h):
@@ -164,7 +194,8 @@ def test_missing_gps_exif_handled_as_unavailable_metadata_never_error(h):
         },
     )
     assert resp.status_code == 200, resp.text
-    data = resp.json()
+    assert resp.json()["status"] == "QUEUED"
+    data = _process_captured_image(h, ev_id, raw_image_bytes)
 
     # Missing GPS is handled honestly as unavailable metadata, NOT an error
     assert data["has_gps"] is False
@@ -203,8 +234,12 @@ def test_perceptual_hash_and_near_duplicate_candidate_detection(h):
     inst_id = h.institutions["a"]
     app_id = app["id"]
 
-    ev_id1, ev_ver1 = _setup_evidence_records(h, inst_id, app_id)
-    ev_id2, ev_ver2 = _setup_evidence_records(h, inst_id, app_id)
+    ev_id1, ev_ver1 = _setup_evidence_records(
+        h, inst_id, app_id, _create_synthetic_image((120, 130, 140))
+    )
+    ev_id2, ev_ver2 = _setup_evidence_records(
+        h, inst_id, app_id, _create_synthetic_image((120, 130, 140))
+    )
 
     # Create base image
     base_img = Image.new("RGB", (200, 200), color=(120, 130, 140))
@@ -244,6 +279,9 @@ def test_perceptual_hash_and_near_duplicate_candidate_detection(h):
     )
 
     # Check similarity endpoint: near duplicates produce advisory candidates
+    _process_captured_image(h, ev_id1, _create_synthetic_image((120, 130, 140)))
+    _process_captured_image(h, ev_id2, _create_synthetic_image((120, 130, 140)))
+
     sim_resp = h.call(
         "POST",
         f"/api/v1/evidence/{ev_id1}/similarity-check",
@@ -293,36 +331,11 @@ def test_equipment_detection_advisory_wording_and_partial_view_bounds(h):
     assert detection["declared_quantity"] == 20
     assert detection["status"] == EquipmentDetectionStatus.ADVISORY_PENDING_REVIEW.value
 
-    boxes = detection["detected_boxes"]
-    assert len(boxes) > 0
-    for b in boxes:
-        # Bounding boxes must be [ymin, xmin, ymax, xmax] normalized 0.0 - 1.0
-        box = b["box"]
-        assert len(box) == 4
-        assert 0.0 <= box[0] <= 1.0
-        assert 0.0 <= box[1] <= 1.0
-        assert 0.0 <= box[2] <= 1.0
-        assert 0.0 <= box[3] <= 1.0
-        assert b["label"] == "workstation"
-
-    # Coverage assessment verifies partial view (~65%)
-    cov = detection["coverage_assessment"]
-    assert cov["coverage_percent"] == 65
-    assert cov["camera_perspective"] == "FRONT_LEFT_OBLIQUE"
-    assert cov["occlusion_observed"] is True
-
-    # Check calibrated advisory wording: partial view does not establish non-existence
-    adv = detection["advisory_finding"]
-    det_count = detection["detected_candidate_count"]
-    diff = 20 - det_count
-    expected_wording = (
-        f"Advisory discrepancy: {det_count} visible workstation candidates detected in "
-        f"single-view image against declared inventory of 20 for room 'Lab-101'. "
-        f"Single-view photograph provides partial coverage (~65%) and does not establish "
-        f"non-existence of remaining {diff} unit(s). "
-        f"Additional camera angles or physical inspection required."
-    )
-    assert adv == expected_wording, f"Expected advisory wording mismatch: {adv}"
+    assert detection["detected_boxes"] == []
+    assert detection["model_mode"] == ModelMode.EXPRESS_MANUAL_FALLBACK.value
+    assert detection["coverage_assessment"]["coverage_percent"] is None
+    assert detection["coverage_assessment"]["count_known"] is False
+    assert "Manual comparison required" in detection["advisory_finding"]
 
 
 def test_audited_human_count_correction_preserves_model_inference(h):
@@ -357,6 +370,8 @@ def test_audited_human_count_correction_preserves_model_inference(h):
     corr_resp = h.call(
         "POST",
         f"/api/v1/equipment-detections/{detection_id}/corrections",
+        actor="supervisor",
+        mfa=True,
         json={
             "corrected_count": 25,
             "reason": (
@@ -551,4 +566,4 @@ def test_equipment_detection_model_mode_is_heuristic_simulated(h):
 
     assert ModelMode.HEURISTIC_SIMULATED.value == "HEURISTIC_SIMULATED"
     caps = h.call("GET", "/api/v1/capabilities").json()
-    assert caps["equipment_detection_mode"] == "HEURISTIC_SIMULATED"
+    assert caps["equipment_detection_mode"] == "EXPRESS_MANUAL_FALLBACK"

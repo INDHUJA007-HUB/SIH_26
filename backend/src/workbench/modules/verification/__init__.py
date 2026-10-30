@@ -10,7 +10,6 @@ from workbench.modules.verification.contracts import (
     VerificationRequest,
     VerificationResponse,
 )
-from workbench.modules.verification.service import VerificationService
 from workbench.modules.verification.signatures import SignatureVerificationEngine
 from workbench.modules.verification.simulator import (
     AICTEHistoricalSimulatorProvider,
@@ -35,5 +34,4 @@ __all__ = [
     "SourceVerificationStatus",
     "VerificationRequest",
     "VerificationResponse",
-    "VerificationService",
 ]

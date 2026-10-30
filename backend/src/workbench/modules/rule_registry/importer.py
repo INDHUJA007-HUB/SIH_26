@@ -16,6 +16,7 @@ from workbench.modules.rule_registry.models import (
     RuleSourceRecord,
     RuleVersionRecord,
 )
+from workbench.platform.config import PROJECT_ROOT
 
 UNRESOLVED_RULE_IDS = {
     "FACULTY.CADRE.AMBIGUITY",
@@ -39,12 +40,14 @@ class RuleRegistryImporter:
         source_register_path: Path | str | None = None,
     ) -> None:
         if rule_register_path is None:
-            self.rule_register_path = Path("output/AICTE_PS26261_Rule_Evidence_Register.json")
+            self.rule_register_path = (
+                PROJECT_ROOT / "output/AICTE_PS26261_Rule_Evidence_Register.json"
+            )
         else:
             self.rule_register_path = Path(rule_register_path)
 
         if source_register_path is None:
-            self.source_register_path = Path("output/AICTE_PS26261_Source_Register.json")
+            self.source_register_path = PROJECT_ROOT / "output/AICTE_PS26261_Source_Register.json"
         else:
             self.source_register_path = Path(source_register_path)
 

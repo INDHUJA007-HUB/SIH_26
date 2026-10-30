@@ -426,7 +426,9 @@ resource "aws_ecs_task_definition" "tasks" {
   container_definitions = jsonencode([
     {
       name      = replace(each.key, "_", "-")
-      image     = "${var.image_repository}:${var.image_tag}"
+      image     = lookup(var.unit_images, each.key, "${var.image_repository}:${var.image_tag}")
+      command   = lookup(merge(local.unit_commands, var.unit_commands), each.key, ["python", "-c", "raise SystemExit('Configure an approved worker entry point')"])
+      secrets   = [for name, arn in var.runtime_secrets : { name = name, valueFrom = arn }]
       essential = true
       portMappings = each.value.port > 0 ? [
         {
@@ -435,11 +437,11 @@ resource "aws_ecs_task_definition" "tasks" {
           protocol      = "tcp"
         }
       ] : []
-      environment = [
-        { name = "ENVIRONMENT", value = var.environment },
+      environment = concat([
+        { name = "WB_ENVIRONMENT", value = var.environment },
         { name = "UNIT_NAME", value = each.key },
-        { name = "OTEL_EXPORTER_OTLP_ENDPOINT", value = var.otel_endpoint }
-      ]
+        { name = "WB_OTLP_ENDPOINT", value = var.otel_endpoint }
+      ], [for name, value in var.runtime_environment : { name = name, value = value }])
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -453,5 +455,111 @@ resource "aws_ecs_task_definition" "tasks" {
 
   tags = merge(var.tags, {
     Unit = each.key
+  })
+}
+
+
+locals {
+  unit_commands = {
+    api               = ["uvicorn", "workbench.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
+    evidence_delivery = ["uvicorn", "workbench.api.main:app", "--host", "0.0.0.0", "--port", "8001", "--no-access-log"]
+    outbox_relay      = ["python", "-m", "workbench.platform.outbox"]
+    workflow_worker   = ["python", "-m", "workbench.processing.lifecycle_worker"]
+    scan_worker       = ["python", "-m", "workbench.processing.scan_worker"]
+    media_worker      = ["python", "-m", "workbench.processing.media_worker"]
+  }
+}
+
+resource "aws_cloudwatch_log_group" "units" {
+  for_each          = local.deployment_units
+  name              = "/ecs/${var.environment}/aicte-${replace(each.key, "_", "-")}"
+  retention_in_days = 90
+  tags              = var.tags
+}
+
+resource "aws_ecs_service" "units" {
+  for_each        = var.enabled_units
+  name            = "${var.environment}-${replace(each.key, "_", "-")}"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.tasks[each.key].arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+  network_configuration {
+    subnets          = var.private_subnet_ids
+    assign_public_ip = false
+    security_groups  = [aws_security_group.app_tasks.id]
+  }
+  lifecycle {
+    precondition {
+      condition     = length(var.private_subnet_ids) > 0 && contains(keys(merge(local.unit_commands, var.unit_commands)), each.key)
+      error_message = "Enabled units need private subnets and an explicit supported command."
+    }
+    precondition {
+      condition     = contains(keys(var.runtime_environment), "WB_TEMPORAL_ADDRESS") && contains(keys(var.runtime_environment), "WB_AUTH_MODE")
+      error_message = "Supply real runtime endpoints and authentication configuration before enabling services."
+    }
+  }
+  dynamic "load_balancer" {
+    for_each = each.key == "api" ? [1] : []
+    content {
+      target_group_arn = aws_lb_target_group.api[0].arn
+      container_name   = "api"
+      container_port   = 8000
+    }
+  }
+  depends_on = [aws_cloudwatch_log_group.units, aws_lb_listener.https]
+}
+
+resource "aws_lb" "api" {
+  count              = contains(var.enabled_units, "api") ? 1 : 0
+  name               = "${var.environment}-workbench"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb.id]
+  subnets            = var.public_subnet_ids
+  drop_invalid_header_fields = true
+  lifecycle {
+    precondition {
+      condition     = length(var.public_subnet_ids) >= 2 && var.tls_certificate_arn != ""
+      error_message = "API deployment requires public subnets in two AZs and an approved TLS certificate."
+    }
+  }
+}
+resource "aws_lb_target_group" "api" {
+  count       = contains(var.enabled_units, "api") ? 1 : 0
+  name        = "${var.environment}-workbench-api"
+  port        = 8000
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
+  target_type = "ip"
+  health_check {
+    path    = "/health/live"
+    matcher = "200"
+  }
+}
+resource "aws_lb_listener" "https" {
+  count             = contains(var.enabled_units, "api") ? 1 : 0
+  load_balancer_arn  = aws_lb.api[0].arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = var.tls_certificate_arn
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.api[0].arn
+  }
+}
+resource "aws_iam_role_policy" "runtime_secret_injection" {
+  count = length(var.runtime_secrets) > 0 ? 1 : 0
+  role  = aws_iam_role.task_execution.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{Effect = "Allow", Action = ["secretsmanager:GetSecretValue"], Resource = values(var.runtime_secrets)}]
   })
 }

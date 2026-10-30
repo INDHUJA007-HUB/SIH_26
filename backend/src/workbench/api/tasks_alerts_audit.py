@@ -7,14 +7,11 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import Connection, text
 
+from workbench.adapters.audit_access_application_service import AuditAccessService
 from workbench.adapters.domain_store import DomainStore
+from workbench.adapters.tasks_alerts_application_service import TasksAlertsService
 from workbench.contracts.intake import Principal
-from workbench.modules.audit_access import (
-    AccessEventRecord,
-    AuditAccessService,
-    AuditEventRecord,
-    AuditExportManifest,
-)
+from workbench.modules.audit_access import AccessEventRecord, AuditEventRecord, AuditExportManifest
 from workbench.modules.tasks_alerts import (
     AlertCategory,
     AlertRecord,
@@ -29,7 +26,6 @@ from workbench.modules.tasks_alerts import (
     ScheduleTimerRequest,
     SendNotificationRequest,
     TaskRecord,
-    TasksAlertsService,
     TaskState,
     TimerStatus,
     UpdateTaskStateRequest,

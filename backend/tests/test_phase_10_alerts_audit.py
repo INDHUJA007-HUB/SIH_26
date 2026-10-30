@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-import urllib.request
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -310,6 +308,7 @@ def test_delivery_in_app_and_mailpit(h):
         "/api/v1/notifications/send",
         json={
             "institution_id": inst_id,
+            "application_id": h.create()["id"],
             "recipient": test_email,
             "channel": NotificationChannel.EMAIL.value,
             "subject": unique_subject,
@@ -318,17 +317,12 @@ def test_delivery_in_app_and_mailpit(h):
     )
     assert email_resp.status_code == 200
     notif_email = email_resp.json()
-    assert notif_email["status"] == NotificationStatus.SENT.value
-    assert notif_email["provider_reference"].startswith("mailpit_")
-
-    # Verify message exists in Mailpit via HTTP API (127.0.0.1:8025)
-    req = urllib.request.Request("http://127.0.0.1:8025/api/v1/messages")
-    with urllib.request.urlopen(req, timeout=3) as response:  # noqa: S310
-        data = json.loads(response.read().decode())
-        messages = data.get("messages", [])
-        assert any(unique_subject in m["Subject"] for m in messages), (
-            f"Expected subject '{unique_subject}' in Mailpit messages"
-        )
+    assert notif_email["status"] == NotificationStatus.QUEUED.value
+    assert notif_email["provider_reference"] is None
+    with h.owner.connect() as conn:
+        assert conn.execute(
+            select(t.outbox.c.id).where(t.outbox.c.event_type == "NotificationQueued")
+        ).first()
 
 
 def test_audit_and_access_history_with_phase_4_view_download_stream_outcomes(h):

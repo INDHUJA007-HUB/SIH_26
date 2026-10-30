@@ -86,3 +86,42 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "enabled_units" {
+  description = "Units explicitly approved for deployment; empty keeps infrastructure dormant"
+  type        = set(string)
+  default     = []
+}
+variable "private_subnet_ids" {
+  type    = list(string)
+  default = []
+}
+variable "unit_commands" {
+  description = "Reviewed worker commands for units without a bundled entry point"
+  type        = map(list(string))
+  default     = {}
+}
+variable "runtime_environment" {
+  description = "Non-secret WB_ runtime settings"
+  type        = map(string)
+  default     = {}
+}
+variable "runtime_secrets" {
+  description = "Secret environment names mapped to Secrets Manager ARNs"
+  type        = map(string)
+  default     = {}
+}
+
+variable "unit_images" {
+  description = "Immutable per-unit images, including the media build target for media_worker"
+  type        = map(string)
+  default     = {}
+}
+variable "public_subnet_ids" {
+  type    = list(string)
+  default = []
+}
+variable "tls_certificate_arn" {
+  type    = string
+  default = ""
+}

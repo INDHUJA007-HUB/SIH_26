@@ -21,6 +21,8 @@ dependencies = [
     "pypdf>=6.21.2,<7",
     "pypdfium2>=5.14,<6",
     "pillow>=13,<14",
+    "pyhanko>=0.26,<1",
+    "reportlab>=4.3,<5",
 ]
 
 [project.scripts]
@@ -79,7 +81,7 @@ strict = true
 files = ["src/workbench"]
 
 [[tool.mypy.overrides]]
-module = ["boto3", "boto3.*", "botocore", "botocore.*", "opentelemetry.instrumentation.*", "pypdfium2", "pypdfium2.*"]
+module = ["boto3", "boto3.*", "botocore", "botocore.*", "opentelemetry.instrumentation.*", "pypdfium2", "pypdfium2.*", "reportlab", "reportlab.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

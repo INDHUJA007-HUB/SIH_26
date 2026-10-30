@@ -2,7 +2,10 @@
 
 from alembic import context
 
-from workbench.adapters import tables  # noqa: F401 -- registers domain metadata
+from workbench.adapters import (
+    niyam_tables,  # noqa: F401 -- approval domain metadata
+    tables,  # noqa: F401 -- registers domain metadata
+)
 from workbench.platform.config import Settings
 from workbench.platform.database import Base, build_engine
 

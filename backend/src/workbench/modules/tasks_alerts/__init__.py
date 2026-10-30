@@ -19,7 +19,6 @@ from workbench.modules.tasks_alerts.contracts import (
     TimerStatus,
     UpdateTaskStateRequest,
 )
-from workbench.modules.tasks_alerts.service import TasksAlertsService
 
 __all__ = [
     "AlertCategory",
@@ -37,7 +36,6 @@ __all__ = [
     "SendNotificationRequest",
     "TaskRecord",
     "TaskState",
-    "TasksAlertsService",
     "TimerStatus",
     "UpdateTaskStateRequest",
 ]

@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from workbench.adapters.domain_store import DomainStore
+from workbench.adapters.operations_application_service import OperationsService
 from workbench.contracts.intake import Principal
 from workbench.modules.operations.contracts import (
     AccessReviewSummary,
@@ -23,7 +24,6 @@ from workbench.modules.operations.contracts import (
     ReleaseContainmentCommand,
 )
 from workbench.modules.operations.drift import evaluate_champion_challenger
-from workbench.modules.operations.service import OperationsService
 
 
 class DriftAnalysisRequest(BaseModel):

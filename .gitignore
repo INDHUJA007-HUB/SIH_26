@@ -33,3 +33,8 @@ backend/coverage.xml
 backend/.venv/
 artifacts/
 *.egg-info/
+
+# Local document extraction and review scratch files
+research/sih26262/attached_*.txt
+research/sih26262/attached_*.log
+research/sih26262/new_statement_document.txt

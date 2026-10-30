@@ -4,17 +4,32 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel, Field
-from sqlalchemy import Connection, text
+from sqlalchemy import Connection, select, text
 
+from workbench.adapters import tables as t
 from workbench.adapters.domain_store import DomainStore
+from workbench.adapters.rectification_application_service import RectificationService
+from workbench.adapters.reporting_application_service import ReportService
+from workbench.adapters.review_application_service import ReviewService
 from workbench.contracts.intake import Principal
-from workbench.modules.rectification.service import RectificationService
-from workbench.modules.reporting.service import ReportService
-from workbench.modules.review.service import ReviewService
 from workbench.platform.errors import ApplicationError
+
+
+def _is_officer(conn: Connection) -> bool:
+    return bool(
+        conn.scalar(
+            text("SELECT wb.elevated() AND (wb.has_role('officer') OR wb.has_role('supervisor'))")
+        )
+    )
+
+
+def _require_officer(conn: Connection) -> None:
+    if not _is_officer(conn):
+        raise ApplicationError("ACCESS_DENIED", "Officer with fresh MFA required", 403)
 
 
 def _check_institution_access(
@@ -177,6 +192,8 @@ def create_phase_9_router(
     ) -> dict[str, Any]:
         with store.transaction(actor) as conn:
             _check_institution_access(conn, body.institution_id, write=True)
+            if body.audience == "OFFICER":
+                _require_officer(conn)
             return report_svc.generate_report(
                 institution_id=body.institution_id,
                 application_id=body.application_id,
@@ -194,7 +211,43 @@ def create_phase_9_router(
         with store.transaction(actor) as conn:
             report = report_svc.get_report(report_id, conn=conn)
             _check_institution_access(conn, report["institution_id"], write=False)
+            if report["audience"] == "OFFICER":
+                _require_officer(conn)
             return report
+
+    @router.get("/reports/{report_id}/pdf")
+    def get_report_pdf_endpoint(
+        report_id: str,
+        actor: Principal = Depends(principal_dep),
+    ) -> Response:
+        import hashlib
+        from uuid import uuid4
+
+        from workbench.modules.reporting.pdf import render_report_pdf
+
+        with store.transaction(actor) as conn:
+            report = report_svc.get_report(report_id, conn=conn)
+            _check_institution_access(conn, report["institution_id"])
+            if report["audience"] == "OFFICER":
+                _require_officer(conn)
+            content = render_report_pdf(report)
+            store.audit(
+                conn,
+                report["institution_id"],
+                report["application_id"],
+                "ReportPDFServed",
+                {"report_id": report_id, "sha256": hashlib.sha256(content).hexdigest()},
+                str(uuid4()),
+            )
+            return Response(
+                content=content,
+                media_type="application/pdf",
+                headers={
+                    "Cache-Control": "private, no-store",
+                    "X-Content-Type-Options": "nosniff",
+                    "ETag": '"' + hashlib.sha256(content).hexdigest() + '"',
+                },
+            )
 
     @router.get("/reports")
     def list_reports_endpoint(
@@ -205,6 +258,10 @@ def create_phase_9_router(
     ) -> list[dict[str, Any]]:
         with store.transaction(actor) as conn:
             _check_institution_access(conn, institution_id, write=False)
+            if not _is_officer(conn):
+                if audience == "OFFICER":
+                    _require_officer(conn)
+                audience = "APPLICANT"
             return report_svc.list_reports(
                 institution_id=institution_id,
                 application_id=application_id,
@@ -235,7 +292,7 @@ def create_phase_9_router(
             if deadline_dt.tzinfo is None:
                 deadline_dt = deadline_dt.replace(tzinfo=UTC)
 
-            return rect_svc.open_response_window(
+            result = rect_svc.open_response_window(
                 institution_id=body.institution_id,
                 application_id=body.application_id,
                 opened_by=str(act["id"]),
@@ -246,6 +303,15 @@ def create_phase_9_router(
                 max_rounds=body.max_rounds,
                 conn=conn,
             )
+            store.audit(
+                conn,
+                body.institution_id,
+                body.application_id,
+                "ResponseWindowOpened",
+                {"window_id": result["id"], "round": result["round_number"]},
+                str(uuid4()),
+            )
+            return result
 
     @router.get("/rectification/windows")
     def list_windows_endpoint(
@@ -270,7 +336,7 @@ def create_phase_9_router(
         with store.transaction(actor) as conn:
             _check_institution_access(conn, body.institution_id, write=True)
             act = store.actor(conn)
-            return rect_svc.submit_rectification_response(
+            result = rect_svc.submit_rectification_response(
                 institution_id=body.institution_id,
                 application_id=body.application_id,
                 window_id=body.window_id,
@@ -279,6 +345,15 @@ def create_phase_9_router(
                 field_updates=body.field_updates,
                 conn=conn,
             )
+            store.audit(
+                conn,
+                body.institution_id,
+                body.application_id,
+                "RectificationResponseSubmitted",
+                {"response_id": result["id"], "revision": result["application_revision"]},
+                str(uuid4()),
+            )
+            return result
 
     # 6. Reassessment & Finding Diff
     @router.post("/rectification/reassess")
@@ -288,6 +363,28 @@ def create_phase_9_router(
     ) -> dict[str, Any]:
         with store.transaction(actor) as conn:
             _check_institution_access(conn, body.institution_id, write=True)
+            _require_officer(conn)
+            if body.reassessed_findings:
+                raise ApplicationError(
+                    "CLIENT_RESULTS_FORBIDDEN", "Reassessment reads finalized stored runs", 422
+                )
+            if not body.new_run_id:
+                response = (
+                    conn.execute(
+                        select(t.rectification_responses).where(
+                            t.rectification_responses.c.id == body.response_id,
+                            t.rectification_responses.c.application_id == body.application_id,
+                            t.rectification_responses.c.institution_id == body.institution_id,
+                        )
+                    )
+                    .mappings()
+                    .first()
+                )
+                if response is None:
+                    raise ApplicationError("NOT_FOUND", "Response not found", 404)
+                body.new_run_id = response["reassessment_run_id"]
+                if not body.new_run_id:
+                    return {"response_id": body.response_id, "status": "QUEUED"}
             return rect_svc.reassess_and_diff(
                 institution_id=body.institution_id,
                 application_id=body.application_id,

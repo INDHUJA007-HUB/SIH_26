@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from workbench.modules.claims.normalization import (
+from workbench.modules.claims import (
     normalize_date,
     normalize_unit,
 )
