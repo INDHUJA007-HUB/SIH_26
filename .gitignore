@@ -33,6 +33,12 @@ backend/coverage.xml
 backend/.venv/
 artifacts/
 *.egg-info/
+node_modules/
+frontend/dist/
+.vercel/
+*.tsbuildinfo
+frontend/playwright-report/
+frontend/test-results/
 
 # Local document extraction and review scratch files
 research/sih26262/attached_*.txt

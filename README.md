@@ -6,6 +6,8 @@ Start with [NiyamFlow implementation and prototype guide](docs/development/NIYAM
 
 ## Start here
 
+- [Modern React frontend](frontend/README.md) — run `npm ci` and `npm run dev` inside `frontend/` for the public NiyamFlow landing page at http://127.0.0.1:5173. Includes an interactive approval journey, role previews and a connection to the existing authenticated workspace.
+
 - [Backend implementation plan](docs/BACKEND_IMPLEMENTATION_PLAN.md) — complete architecture and phased delivery specification.
 - [Development setup](docs/development/GETTING_STARTED.md) — start and verify the backend and local stack.
 - [Phase 2–4 implementation](docs/development/PHASE_2_4_IMPLEMENTATION.md) — persisted permissions, immutable submissions, quarantine scanning, delivery and operating procedures.
@@ -22,6 +24,7 @@ Start with [NiyamFlow implementation and prototype guide](docs/development/NIYAM
 
 ```text
 backend/   FastAPI application, persisted identity/intake domain, migrations, workers and tests
+frontend/  React/TypeScript landing page, Tailwind styling and interactive product walkthrough
 infra/     Digest-pinned local platform and non-root backend container
 scripts/   Repeatable Windows and Unix bootstrap/start/check/stop
 docs/      Implementation plan, baseline decisions and developer/operator guides
