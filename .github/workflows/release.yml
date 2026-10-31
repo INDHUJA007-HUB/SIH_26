@@ -20,7 +20,6 @@ jobs:
         include:
           - {target: runtime, suffix: ''}
           - {target: parser, suffix: '-parser'}
-          - {target: media, suffix: '-media'}
     runs-on: ubuntu-latest
     permissions: {contents: read, packages: write, id-token: write, attestations: write}
     steps:
